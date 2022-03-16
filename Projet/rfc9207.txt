@@ -199,15 +199,10 @@ Summary
    │  0x31   │ Server ID │ Sender Nickname size │   . . .
    └─────────┴───────────┴──────────────────────┘
 
-     . . .         n bytes              4 bytes             . . .
-             ┌─────────────────┬────────────────────────┐
-     . . .   │ Sender Nickname │ Receiver Nickname size │   . . .
-             └─────────────────┴────────────────────────┘
-
-     . . .          n bytes          4 bytes      n bytes
-             ┌───────────────────┬──────────────┬─────────┐
-     . . .   │ Receiver Nickname │ Message size │ Message │
-             └───────────────────┴──────────────┴─────────┘
+     . . .         n bytes         4 bytes      n bytes
+             ┌─────────────────┬──────────────┬─────────┐
+     . . .   │ Sender Nickname │ Message size │ Message │
+             └─────────────────┴──────────────┴─────────┘
 
    Once the server has built this packet, it sends it to the correct
    server using a 'PCKFWD' packet:
@@ -233,52 +228,48 @@ Summary
    integer, this ensures two transfers between the same client with the
    same filename and filesize will not clash.
 
-     1 byte    4 bytes           4 bytes             . . .
-   ┌────────┬───────────┬────────────────────────┐
-   │  0x40  │ Server ID │ Receiver Nickname size │   . . .
-   └────────┴───────────┴────────────────────────┘
+     1 byte    4 bytes       4 bytes      n bytes      . . .
+   ┌────────┬───────────┬───────────────┬──────────┐
+   │  0x40  │ Server ID │ Nickname size │ Nickname │   . . .
+   └────────┴───────────┴───────────────┴──────────┘
 
-     . . .          n bytes          4 bytes        4 bytes        . . .
-             ┌───────────────────┬─────────────┬───────────────┐
-     . . .   │ Receiver Nickname │ Transfer ID │ Filename size │   . . .
-             └───────────────────┴─────────────┴───────────────┘
+     . . .       4 bytes        4 bytes      n bytes      . . .
+             ┌─────────────┬───────────────┬──────────┐
+     . . .   │ Transfer ID │ Filename size │ Filename │   . . .
+             └─────────────┴───────────────┴──────────┘
 
-     . . .     n bytes        4 bytes        1,024 bytes      . . .
-             ┌──────────┬─────────────────┬───────────────┐
-     . . .   │ Filename │ Number of chunk │ Chunk content │   . . .
-             └──────────┴─────────────────┴───────────────┘
+     . . .         4 bytes        1,024 bytes      . . .
+             ┌─────────────────┬───────────────┐
+     . . .   │ Number of chunk │ Chunk content │   . . .
+             └─────────────────┴───────────────┘
 
-   Once the server has received this packet, it will build a
-   'FILECHNKINC'.  This packet has the destination server's ID
-   instead of the origin server and the sender nickname appended to it.
+   Once the server has received this packet, if the server ID differs,
+   the server forwards this packet to the desired server through a
+   'PCKFWD' packet.
+
+     1 byte    4 bytes         n bytes
+   ┌────────┬───────────┬───────────────────┐
+   │  0x50  │ Server ID │  FILECHNK content │
+   └────────┴───────────┴───────────────────┘
+
+   Once the cprrect server has received this packet, it will build a
+   'FILECHNKINC'.  This packet has the origin server's ID instead of the
+    destination server and the sender nickname appended to it.
 
      1 byte    4 bytes          4 bytes            . . .
    ┌────────┬───────────┬──────────────────────┐
    │  0x41  │ Server ID │ Sender Nickname size │   . . .
    └────────┴───────────┴──────────────────────┘
 
-     . . .         n bytes              4 bytes             . . .
-             ┌─────────────────┬────────────────────────┐
-     . . .   │ Sender Nickname │ Receiver Nickname size │   . . .
-             └─────────────────┴────────────────────────┘
-
-     . . .          n bytes          4 bytes        4 bytes        . . .
-             ┌───────────────────┬─────────────┬───────────────┐
-     . . .   │ Receiver Nickname │ Transfer ID │ Filename size │   . . .
-             └───────────────────┴─────────────┴───────────────┘
+     . . .         n bytes          4 bytes        4 bytes       . . .
+             ┌─────────────────┬─────────────┬───────────────┐
+     . . .   │ Sender Nickname │ Transfer ID │ Filename size │   . . .
+             └─────────────────┴─────────────┴───────────────┘
 
      . . .     n bytes        4 bytes        1,024 bytes      . . .
              ┌──────────┬─────────────────┬───────────────┐
      . . .   │ Filename │ Number of chunk │ Chunk content │   . . .
              └──────────┴─────────────────┴───────────────┘
-
-   Once the packet built, the server will ship it to the client if
-   connected or to the destination server via a 'PCKFWD' packet:
-
-     1 byte    4 bytes          n bytes
-   ┌────────┬───────────┬──────────────────────┐
-   │  0x50  │ Server ID │  FILECHNKINC content │
-   └────────┴───────────┴──────────────────────┘
 
    Client receiving these packets will rebuild the file using chunks
    content.  The name is used to save the file using its original name
@@ -306,7 +297,7 @@ Summary
    A sibling description is the sibling Server ID, its IPv4 address and
    its working port :
 
-          4 bytes             4 bytes           4 bytes
+          4 bytes             4 bytes           2 bytes
    ┌───────────────────┬────────────────────┬──────────────┐
    │ Sibling Server ID │ Sibling IP Address │ Sibling Port │
    └───────────────────┴────────────────────┴──────────────┘
@@ -377,8 +368,6 @@ Summary
 
       -  0x31 (MSGPRVINC) : Private message distribution (incoming)
 
-      -  0x32 (PCKFWD) : Message forwarding
-
    d. File transfer (0x40):
 
       -  0x40 (FILECHNK) : File chunk transfer (outgoing)
@@ -426,19 +415,19 @@ Summary
    follow to get to any server on the network.  For example, let's see
    the routing table of server E:
 
-                         ┌─────────────┬─────────────┐
-                         │ Next server │ Path length │
-                     ┌───┼─────────────┼─────────────┤
-                     │ A │ B           │ 1           │
-                     ├───┼─────────────┼─────────────┤
-                     │ B │ B           │ 0           │
-                     ├───┼─────────────┼─────────────┤
-                     │ C │ B           │ 1           │
-                     ├───┼─────────────┼─────────────┤
-                     │ D │ D           │ 0           │
-                     ├───┼─────────────┼─────────────┤
-                     │ F │ F           │ 0           │
-                     └───┴─────────────┴─────────────┘
+                       ┌─────────────┬─────────────┐
+                       │ Next server │ Path length │
+                   ┌───┼─────────────┼─────────────┤
+                   │ A │ B           │ 1           │
+                   ├───┼─────────────┼─────────────┤
+                   │ B │ B           │ 0           │
+                   ├───┼─────────────┼─────────────┤
+                   │ C │ B           │ 1           │
+                   ├───┼─────────────┼─────────────┤
+                   │ D │ D           │ 0           │
+                   ├───┼─────────────┼─────────────┤
+                   │ F │ F           │ 0           │
+                   └───┴─────────────┴─────────────┘
 
    Now let's pretend a new server Z wants to merge with E.  The two
    servers would exchange their routing table to update the shortest
@@ -462,21 +451,21 @@ Summary
    server it doesn't have a path to get to, it will save that E is the
    next server to follow.  The Z routing table would look like this:
 
-                         ┌─────────────┬─────────────┐
-                         │ Next server │ Path length │
-                     ┌───┼─────────────┼─────────────┤
-                     │ A │ E           │ 2           │
-                     ├───┼─────────────┼─────────────┤
-                     │ B │ E           │ 1           │
-                     ├───┼─────────────┼─────────────┤
-                     │ C │ E           │ 2           │
-                     ├───┼─────────────┼─────────────┤
-                     │ D │ E           │ 1           │
-                     ├───┼─────────────┼─────────────┤
-                     │ E │ E           │ 0           │
-                     ├───┼─────────────┼─────────────┤
-                     │ F │ E           │ 1           │
-                     └───┴─────────────┴─────────────┘
+                       ┌─────────────┬─────────────┐
+                       │ Next server │ Path length │
+                   ┌───┼─────────────┼─────────────┤
+                   │ A │ E           │ 2           │
+                   ├───┼─────────────┼─────────────┤
+                   │ B │ E           │ 1           │
+                   ├───┼─────────────┼─────────────┤
+                   │ C │ E           │ 2           │
+                   ├───┼─────────────┼─────────────┤
+                   │ D │ E           │ 1           │
+                   ├───┼─────────────┼─────────────┤
+                   │ E │ E           │ 0           │
+                   ├───┼─────────────┼─────────────┤
+                   │ F │ E           │ 1           │
+                   └───┴─────────────┴─────────────┘
 
    On its side, the server E would add Z in its routing table and send
    this information to all its sibling in order to let them update their
