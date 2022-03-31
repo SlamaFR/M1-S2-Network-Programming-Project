@@ -1,5 +1,8 @@
 package fr.upem.chatfusion.common.message;
 
+import fr.upem.chatfusion.common.Buffers;
+import fr.upem.chatfusion.common.packet.Packet;
+
 import java.nio.ByteBuffer;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -12,12 +15,11 @@ public record PrivateMessage(String nickname, String message) {
     public ByteBuffer toByteBuffer() {
         var recipient = UTF_8.encode(nickname);
         var content = UTF_8.encode(message);
-        var buffer = ByteBuffer.allocate(recipient.remaining() + content.remaining() + 2 * Integer.BYTES);
+        var buffer = ByteBuffer.allocate(Byte.BYTES + 2 * Integer.BYTES + recipient.remaining() + content.remaining());
 
-        buffer.putInt(recipient.remaining());
-        buffer.put(recipient);
-        buffer.putInt(content.remaining());
-        buffer.put(content);
+        buffer.put(Packet.OpCode.OUTGOING_PRIVATE_MESSAGE.getCode());
+        Buffers.putEncodedString(buffer, recipient);
+        Buffers.putEncodedString(buffer, content);
 
         return buffer;
     }
