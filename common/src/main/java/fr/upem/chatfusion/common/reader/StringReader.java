@@ -11,9 +11,10 @@ public class StringReader implements Reader<String> {
         DONE, WAITING_LENGTH, WAITING_CONTENT, ERROR
     }
 
-    private State state = State.WAITING_LENGTH;
+    private final ByteBuffer internalBuffer = ByteBuffer.allocate(1024);
     private final IntReader intReader = new IntReader();
-    private final ByteBuffer internalBuffer = ByteBuffer.allocate(1024); // write-mode
+    private State state = State.WAITING_LENGTH;
+
     private int messageLength;
     private String message;
 
