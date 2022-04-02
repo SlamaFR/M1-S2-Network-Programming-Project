@@ -99,6 +99,7 @@ public class ClientContext {
                 var code = Packet.OpCode.fromCode(bufferIn.get());
                 switch (code) {
                     case AUTHENTICATION_GUEST -> {
+                        LOGGER.info("authentication");
                         if (authenticated) {
                             // TODO: already authenticated
                             System.out.println("Already authenticated");

@@ -1,7 +1,6 @@
 package fr.upem.chatfusion.client;
 
 import fr.upem.chatfusion.common.Channels;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
@@ -17,7 +16,6 @@ public class ServerContext {
     private final SocketChannel channel;
     private final ByteBuffer bufferIn;
     private final ByteBuffer bufferOut;
-
     private boolean closed = false;
 
     public ServerContext(SelectionKey key) {
@@ -28,6 +26,7 @@ public class ServerContext {
     }
 
     public void doRead() throws IOException {
+        LOGGER.info("Do read");
         var bytes = channel.read(bufferIn);
         if (bytes == 0) {
             LOGGER.severe("Selector gave a bad hint");
@@ -42,6 +41,7 @@ public class ServerContext {
     }
 
     public void doWrite() throws IOException {
+        LOGGER.info("Do write");
         bufferOut.flip();
         if (closed && !bufferOut.hasRemaining()) {
             Channels.silentlyClose(channel);
@@ -60,13 +60,15 @@ public class ServerContext {
         if (!channel.finishConnect()) {
             return;
         }
-        key.interestOps(SelectionKey.OP_READ);
+        updateInterestOps();
     }
 
     private void processIn() {
         // TODO
     }
 
+    // TODO : add a packet code as parameter to know which operation to do
+    // for know, it only send the AuthGuest operation
     private void processOut() {
         // TODO
     }
@@ -74,9 +76,11 @@ public class ServerContext {
     private void updateInterestOps() {
         var interestOps = 0;
         if (!closed && bufferIn.hasRemaining()) {
+            LOGGER.info("OP_READ");
             interestOps |= SelectionKey.OP_READ;
         }
         if (!closed && bufferOut.position() != 0) {
+            LOGGER.info("OP_WRITE");
             interestOps |= SelectionKey.OP_WRITE;
         }
         if (interestOps == 0) {

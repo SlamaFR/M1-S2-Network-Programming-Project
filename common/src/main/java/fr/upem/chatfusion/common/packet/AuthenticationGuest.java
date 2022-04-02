@@ -11,9 +11,9 @@ public record AuthenticationGuest(String nickname) implements Packet {
     @Override
     public ByteBuffer toByteBuffer() {
         var usernameBytes = UTF_8.encode(nickname);
-        var buffer = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + usernameBytes.remaining());
+        var buffer = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + usernameBytes.limit());
 
-        buffer.put(Packet.OpCode.AUTHENTICATION_GUEST.getCode());
+        buffer.putInt(Packet.OpCode.AUTHENTICATION_GUEST.getCode());
         Buffers.putEncodedString(buffer, usernameBytes);
         return buffer;
     }

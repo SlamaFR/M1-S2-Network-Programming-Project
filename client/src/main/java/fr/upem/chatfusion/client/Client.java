@@ -16,13 +16,12 @@ public class Client {
     private final SocketChannel channel;
     private final Selector selector;
     private final InetSocketAddress serverAddress;
-    private final String nickname;
 
     private ServerContext context;
+    private String nickname;
 
-    public Client(String nickname, InetSocketAddress inetSocketAddress) throws IOException {
+    public Client(InetSocketAddress inetSocketAddress) throws IOException {
         this.serverAddress = inetSocketAddress;
-        this.nickname = nickname;
         this.channel = SocketChannel.open();
         this.selector = Selector.open();
     }
@@ -34,8 +33,9 @@ public class Client {
         key.attach(context);
         this.channel.connect(serverAddress);
 
+        new ConsoleAuth(selector, channel, key).launch(); // executed on same thread so next operation is blocked.
+        System.out.println("Welcome on ChatFusion Server : you are now allowed to communicate with others ! ");
         //console.start();
-
         while (!Thread.interrupted()) {
             try {
                 selector.select(k -> {
@@ -55,12 +55,15 @@ public class Client {
     private void treatKey(SelectionKey key) throws InterruptedException {
         try {
             if (key.isValid() && key.isConnectable()) {
+                LOGGER.info("Do CONNECT");
                 this.context.doConnect();
             }
             if (key.isValid() && key.isWritable()) {
+                LOGGER.info("Do WRITE");
                 this.context.doWrite();
             }
             if (key.isValid() && key.isReadable()) {
+                LOGGER.info("Do READ");
                 this.context.doRead();
             }
         } catch (IOException ioe) {
