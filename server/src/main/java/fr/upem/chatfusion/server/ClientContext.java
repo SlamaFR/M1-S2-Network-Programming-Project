@@ -1,34 +1,44 @@
 package fr.upem.chatfusion.server;
 
+import fr.upem.chatfusion.common.Buffers;
 import fr.upem.chatfusion.common.Channels;
+import fr.upem.chatfusion.common.packet.AuthenticationGuest;
 import fr.upem.chatfusion.common.packet.Packet;
+import fr.upem.chatfusion.common.reader.AuthGuestReader;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayDeque;
-import java.util.Queue;
 import java.util.logging.Logger;
 
 public class ClientContext {
 
     private static final Logger LOGGER = Logger.getLogger(ClientContext.class.getName());
 
+    private final Server server;
     private final SelectionKey key;
     private final SocketChannel channel;
     private final ByteBuffer bufferIn;
     private final ByteBuffer bufferOut;
-    private final Queue<Packet> queue;
+    private final ArrayDeque<ByteBuffer> queue;
 
+    private final AuthGuestReader authGuestReader;
+
+    private boolean authenticated = false;
+    private String nickname;
     private boolean closed = false;
 
-    public ClientContext(SelectionKey key) {
+    public ClientContext(Server server, SelectionKey key) {
+        this.server = server;
         this.key = key;
         this.channel = (SocketChannel) key.channel();
         this.bufferIn = ByteBuffer.allocate(1_024);
         this.bufferOut = ByteBuffer.allocate(1_024);
         this.queue = new ArrayDeque<>();
+
+        this.authGuestReader = new AuthGuestReader();
     }
 
     /**
@@ -73,12 +83,57 @@ public class ClientContext {
         updateInterestOps();
     }
 
+    /**
+     * Adds a packet to the queue.
+     * @param packet the packet to add
+     */
+    public void enqueuePacket(Packet packet) {
+        queue.offer(packet.toByteBuffer().flip());
+        processOut();
+        updateInterestOps();
+    }
+
     private void processIn() {
-        // TODO
+        while (bufferIn.hasRemaining()) {
+            try {
+                var code = Packet.OpCode.fromCode(bufferIn.get());
+                switch (code) {
+                    case AUTHENTICATION_GUEST -> {
+                        if (authenticated) {
+                            // TODO: already authenticated
+                            System.out.println("Already authenticated");
+                            continue;
+                        }
+                        if (!ReaderHandler.handlePacketReader(authGuestReader, bufferIn)) {
+                            return;
+                        }
+                        handleAuthenticationGuest(authGuestReader.get());
+                        authGuestReader.reset();
+                    }
+                    case INCOMING_PUBLIC_MESSAGE -> {
+                        // TODO
+                    }
+                    default -> {
+                        LOGGER.severe("OpCode not implemented: " + code);
+                        closed = true;
+                    }
+                }
+            } catch (IllegalArgumentException e) {
+                LOGGER.severe("Unknown packet OpCode");
+                closed = true;
+            }
+        }
     }
 
     private void processOut() {
-        // TODO
+        while (bufferOut.hasRemaining() && !queue.isEmpty()) {
+            var msg = queue.peek();
+            if (!msg.hasRemaining()) {
+                queue.pop();
+                continue;
+            }
+            Buffers.tryPut(bufferOut, msg);
+        }
     }
 
     /**
@@ -98,5 +153,21 @@ public class ClientContext {
             return;
         }
         key.interestOps(interestOps);
+    }
+
+    private void handleAuthenticationGuest(AuthenticationGuest packet) {
+        this.nickname = packet.nickname();
+        this.authenticated = server.authenticateGuest(this);
+        if (!authenticated) {
+            System.out.println("Could not authenticate guest");
+            // TODO: send error packet
+        } else {
+            System.out.println("Guest authenticated");
+            // TODO: send success packet
+        }
+    }
+
+    public String getNickname() {
+        return nickname;
     }
 }
