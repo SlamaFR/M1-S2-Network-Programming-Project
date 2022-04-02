@@ -8,6 +8,7 @@ import java.net.InetSocketAddress;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
+import java.util.HashMap;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
@@ -24,6 +25,8 @@ public class Server {
     private final BlockingQueue<String> commandQueue;
     private final Thread console;
 
+    private final HashMap<String, ClientContext> clients;
+
     public Server(int port, int id) throws IOException {
         this.id = id;
         this.serverSocketChannel = ServerSocketChannel.open();
@@ -32,12 +35,14 @@ public class Server {
         this.commandQueue = new LinkedBlockingQueue<>();
         this.console = new Thread(new Console(this));
         this.console.setDaemon(true);
+        this.clients = new HashMap<>();
     }
 
     public void launch() throws IOException {
         serverSocketChannel.configureBlocking(false);
         serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
         console.start();
+        System.out.println("Server ID#" + id + " started");
         while (!Thread.interrupted() && serverSocketChannel.isOpen()) {
             try {
                 selector.select(this::treatKey);
@@ -100,7 +105,11 @@ public class Server {
         }
         sc.configureBlocking(false);
         var k = sc.register(selector, SelectionKey.OP_READ);
-        k.attach(new ClientContext(k));
+        k.attach(new ClientContext(this, k));
+    }
+
+    public boolean authenticateGuest(ClientContext client) {
+        return clients.putIfAbsent(client.getNickname(), client) == null;
     }
 
 }
