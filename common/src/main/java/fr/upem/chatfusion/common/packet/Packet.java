@@ -2,14 +2,12 @@ package fr.upem.chatfusion.common.packet;
 
 import java.nio.ByteBuffer;
 
-public sealed interface Packet permits AbstractPacket {
+public interface Packet {
 
     /**
-     * Writes down the packet into the given buffer.
-     * <p>
-     * <b>Note:</b> The buffer must be in write mode before and after this method call.
+     * Returns the packet encoded in a byte buffer.
      */
-    void write(ByteBuffer buffer);
+    ByteBuffer toByteBuffer();
 
     enum OpCode {
         AUTHENTICATION_GUEST(0x00),
