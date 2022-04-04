@@ -3,8 +3,11 @@ package fr.upem.chatfusion.server;
 import fr.upem.chatfusion.common.Buffers;
 import fr.upem.chatfusion.common.Channels;
 import fr.upem.chatfusion.common.packet.AuthenticationGuest;
+import fr.upem.chatfusion.common.packet.IncomingPublicMessage;
 import fr.upem.chatfusion.common.packet.Packet;
 import fr.upem.chatfusion.common.reader.AuthGuestReader;
+import fr.upem.chatfusion.common.reader.OutPublicMessageReader;
+import fr.upem.chatfusion.common.reader.ReaderHandler;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -25,6 +28,7 @@ public class ClientContext {
     private final ArrayDeque<ByteBuffer> queue;
 
     private final AuthGuestReader authGuestReader;
+    private final OutPublicMessageReader outPublicMessageReader;
 
     private boolean authenticated = false;
     private String nickname;
@@ -39,6 +43,7 @@ public class ClientContext {
         this.queue = new ArrayDeque<>();
 
         this.authGuestReader = new AuthGuestReader();
+        this.outPublicMessageReader = new OutPublicMessageReader();
     }
 
     /**
@@ -94,9 +99,12 @@ public class ClientContext {
     }
 
     private void processIn() {
+        bufferIn.flip();
         while (bufferIn.hasRemaining()) {
             try {
                 var code = Packet.OpCode.fromCode(bufferIn.get());
+                bufferIn.compact();
+                System.out.println("Received packet: " + code);
                 switch (code) {
                     case AUTHENTICATION_GUEST -> {
                         LOGGER.info("authentication");
@@ -111,19 +119,28 @@ public class ClientContext {
                         handleAuthenticationGuest(authGuestReader.get());
                         authGuestReader.reset();
                     }
-                    case INCOMING_PUBLIC_MESSAGE -> {
-                        // TODO
+                    case OUTGOING_PRIVATE_MESSAGE -> {
+                        if (!ReaderHandler.handlePacketReader(outPublicMessageReader, bufferIn)) {
+                            return;
+                        }
+                        var message = outPublicMessageReader.get();
+                        var packet = new IncomingPublicMessage(nickname, message.message());
+                        server.dispatchPacket(packet);
+                        outPublicMessageReader.reset();
                     }
                     default -> {
                         LOGGER.severe("OpCode not implemented: " + code);
                         closed = true;
+                        return;
                     }
                 }
+                bufferIn.flip();
             } catch (IllegalArgumentException e) {
                 LOGGER.severe("Unknown packet OpCode");
                 closed = true;
             }
         }
+        bufferIn.compact();
     }
 
     private void processOut() {

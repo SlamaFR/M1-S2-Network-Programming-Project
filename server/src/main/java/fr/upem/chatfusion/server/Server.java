@@ -1,6 +1,8 @@
 package fr.upem.chatfusion.server;
 
 import fr.upem.chatfusion.common.Channels;
+import fr.upem.chatfusion.common.packet.IncomingPublicMessage;
+import fr.upem.chatfusion.common.packet.Packet;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -110,6 +112,13 @@ public class Server {
 
     public boolean authenticateGuest(ClientContext client) {
         return clients.putIfAbsent(client.getNickname(), client) == null;
+    }
+
+    public void dispatchPacket(Packet packet) {
+        System.out.println("??");
+        for (var client : clients.values()) {
+            client.enqueuePacket(packet);
+        }
     }
 
 }

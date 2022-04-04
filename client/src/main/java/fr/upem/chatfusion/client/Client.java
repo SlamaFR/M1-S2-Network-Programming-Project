@@ -1,5 +1,9 @@
 package fr.upem.chatfusion.client;
 
+import fr.upem.chatfusion.common.Helpers;
+import fr.upem.chatfusion.common.packet.AuthenticationGuest;
+import fr.upem.chatfusion.common.packet.OutgoingPublicMessage;
+
 import javax.naming.Context;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -7,6 +11,8 @@ import java.net.InetSocketAddress;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Logger;
 
 public class Client {
@@ -16,28 +22,34 @@ public class Client {
     private final SocketChannel channel;
     private final Selector selector;
     private final InetSocketAddress serverAddress;
+    private final String nickname;
+    private final BlockingQueue<String> commandQueue;
+    private final Thread console;
 
     private ServerContext context;
-    private String nickname;
 
-    public Client(InetSocketAddress inetSocketAddress) throws IOException {
+    public Client(String nickname, InetSocketAddress inetSocketAddress) throws IOException {
         this.serverAddress = inetSocketAddress;
+        this.nickname = nickname;
         this.channel = SocketChannel.open();
         this.selector = Selector.open();
+        this.commandQueue = new LinkedBlockingQueue<>();
+        this.console = new Thread(new Console(this));
+        this.console.setDaemon(true);
     }
 
     public void launch() throws IOException {
         this.channel.configureBlocking(false);
         var key = this.channel.register(selector, SelectionKey.OP_CONNECT);
-        this.context = new ServerContext(key);
+        this.context = new ServerContext(this, key);
         key.attach(context);
         this.channel.connect(serverAddress);
 
-        new ConsoleAuth(selector, channel, key).launch(); // executed on same thread so next operation is blocked.
-        System.out.println("Welcome on ChatFusion Server : you are now allowed to communicate with others ! ");
-        //console.start();
+        console.start();
+
         while (!Thread.interrupted()) {
             try {
+                //Helpers.printKeys(selector);
                 selector.select(k -> {
                     try {
                         treatKey(k);
@@ -45,25 +57,23 @@ public class Client {
                         LOGGER.info("Interrupted while treating key");
                     }
                 });
-                //processCommands();
+                processCommands();
             } catch (UncheckedIOException tunneled) {
                 throw tunneled.getCause();
             }
         }
+        console.interrupt();
     }
 
     private void treatKey(SelectionKey key) throws InterruptedException {
         try {
             if (key.isValid() && key.isConnectable()) {
-                LOGGER.info("Do CONNECT");
                 this.context.doConnect();
             }
             if (key.isValid() && key.isWritable()) {
-                LOGGER.info("Do WRITE");
                 this.context.doWrite();
             }
             if (key.isValid() && key.isReadable()) {
-                LOGGER.info("Do READ");
                 this.context.doRead();
             }
         } catch (IOException ioe) {
@@ -71,4 +81,29 @@ public class Client {
         }
     }
 
+    public void sendCommand(String cmd) throws InterruptedException {
+        commandQueue.put(cmd);
+        if (!commandQueue.isEmpty()) {
+            selector.wakeup();
+        }
+    }
+
+    private void processCommands() {
+        while (!commandQueue.isEmpty()) {
+            String cmd = commandQueue.poll();
+            if (cmd.startsWith("/")) {
+                // Private message
+            } else if (cmd.startsWith("@")) {
+                // File transfer
+            } else {
+                // Public message
+                var packet = new OutgoingPublicMessage(cmd);
+                context.enqueue(packet);
+            }
+        }
+    }
+
+    public String getNickname() {
+        return nickname;
+    }
 }

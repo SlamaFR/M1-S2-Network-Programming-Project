@@ -1,7 +1,6 @@
-package fr.upem.chatfusion.server;
+package fr.upem.chatfusion.common.reader;
 
 import fr.upem.chatfusion.common.packet.Packet;
-import fr.upem.chatfusion.common.reader.Reader;
 
 import java.nio.ByteBuffer;
 import java.util.logging.Logger;
@@ -11,7 +10,7 @@ public final class ReaderHandler {
     private static final Logger LOGGER = Logger.getLogger(ReaderHandler.class.getName());
 
     private ReaderHandler() {
-        throw new AssertionError("No fr.upem.chatfusion.server.ReaderHandler instances for you!");
+        throw new AssertionError("No fr.upem.chatfusion.common.reader.ReaderHandler instances for you!");
     }
 
     /**
