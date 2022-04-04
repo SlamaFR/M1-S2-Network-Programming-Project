@@ -3,9 +3,11 @@ package fr.upem.chatfusion.server;
 import fr.upem.chatfusion.common.Buffers;
 import fr.upem.chatfusion.common.Channels;
 import fr.upem.chatfusion.common.packet.AuthenticationGuest;
+import fr.upem.chatfusion.common.packet.IncomingPublicMessage;
 import fr.upem.chatfusion.common.packet.Packet;
 import fr.upem.chatfusion.common.reader.AuthGuestReader;
 import fr.upem.chatfusion.common.reader.OutPublicMessageReader;
+import fr.upem.chatfusion.common.reader.ReaderHandler;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -121,7 +123,8 @@ public class ClientContext {
                             return;
                         }
                         var message = outPublicMessageReader.get();
-                        System.out.println("Received message: " + message);
+                        var packet = new IncomingPublicMessage(nickname, message.message());
+                        server.dispatchPacket(packet);
                         outPublicMessageReader.reset();
                     }
                     default -> {

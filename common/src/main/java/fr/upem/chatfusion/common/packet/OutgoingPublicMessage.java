@@ -13,7 +13,7 @@ public record OutgoingPublicMessage(String message) implements Packet {
         var messageBytes = UTF_8.encode(message);
         var buffer = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + messageBytes.remaining());
 
-        buffer.put(OpCode.OUTGOING_PRIVATE_MESSAGE.getCode());
+        buffer.put(OpCode.OUTGOING_PUBLIC_MESSAGE.getCode());
         Buffers.putEncodedString(buffer, messageBytes);
         return buffer;
     }

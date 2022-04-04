@@ -1,6 +1,7 @@
 package fr.upem.chatfusion.client;
 
 import fr.upem.chatfusion.common.Helpers;
+import fr.upem.chatfusion.common.packet.AuthenticationGuest;
 import fr.upem.chatfusion.common.packet.OutgoingPublicMessage;
 
 import javax.naming.Context;
@@ -40,7 +41,7 @@ public class Client {
     public void launch() throws IOException {
         this.channel.configureBlocking(false);
         var key = this.channel.register(selector, SelectionKey.OP_CONNECT);
-        this.context = new ServerContext(key);
+        this.context = new ServerContext(this, key);
         key.attach(context);
         this.channel.connect(serverAddress);
 
@@ -48,6 +49,7 @@ public class Client {
 
         while (!Thread.interrupted()) {
             try {
+                //Helpers.printKeys(selector);
                 selector.select(k -> {
                     try {
                         treatKey(k);
@@ -101,4 +103,7 @@ public class Client {
         }
     }
 
+    public String getNickname() {
+        return nickname;
+    }
 }
