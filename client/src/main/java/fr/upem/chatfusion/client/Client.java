@@ -1,5 +1,8 @@
 package fr.upem.chatfusion.client;
 
+import fr.upem.chatfusion.common.Helpers;
+import fr.upem.chatfusion.common.packet.OutgoingPublicMessage;
+
 import javax.naming.Context;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -7,6 +10,8 @@ import java.net.InetSocketAddress;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Logger;
 
 public class Client {
@@ -17,6 +22,8 @@ public class Client {
     private final Selector selector;
     private final InetSocketAddress serverAddress;
     private final String nickname;
+    private final BlockingQueue<String> commandQueue;
+    private final Thread console;
 
     private ServerContext context;
 
@@ -25,6 +32,9 @@ public class Client {
         this.nickname = nickname;
         this.channel = SocketChannel.open();
         this.selector = Selector.open();
+        this.commandQueue = new LinkedBlockingQueue<>();
+        this.console = new Thread(new Console(this));
+        this.console.setDaemon(true);
     }
 
     public void launch() throws IOException {
@@ -34,7 +44,7 @@ public class Client {
         key.attach(context);
         this.channel.connect(serverAddress);
 
-        //console.start();
+        console.start();
 
         while (!Thread.interrupted()) {
             try {
@@ -45,11 +55,12 @@ public class Client {
                         LOGGER.info("Interrupted while treating key");
                     }
                 });
-                //processCommands();
+                processCommands();
             } catch (UncheckedIOException tunneled) {
                 throw tunneled.getCause();
             }
         }
+        console.interrupt();
     }
 
     private void treatKey(SelectionKey key) throws InterruptedException {
@@ -65,6 +76,28 @@ public class Client {
             }
         } catch (IOException ioe) {
             throw new UncheckedIOException(ioe);
+        }
+    }
+
+    public void sendCommand(String cmd) throws InterruptedException {
+        commandQueue.put(cmd);
+        if (!commandQueue.isEmpty()) {
+            selector.wakeup();
+        }
+    }
+
+    private void processCommands() {
+        while (!commandQueue.isEmpty()) {
+            String cmd = commandQueue.poll();
+            if (cmd.startsWith("/")) {
+                // Private message
+            } else if (cmd.startsWith("@")) {
+                // File transfer
+            } else {
+                // Public message
+                var packet = new OutgoingPublicMessage(cmd);
+                context.enqueue(packet);
+            }
         }
     }
 

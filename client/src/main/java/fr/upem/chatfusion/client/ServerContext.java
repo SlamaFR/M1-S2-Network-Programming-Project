@@ -1,11 +1,14 @@
 package fr.upem.chatfusion.client;
 
+import fr.upem.chatfusion.common.Buffers;
 import fr.upem.chatfusion.common.Channels;
+import fr.upem.chatfusion.common.packet.Packet;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
+import java.util.ArrayDeque;
 import java.util.logging.Logger;
 
 public class ServerContext {
@@ -17,6 +20,7 @@ public class ServerContext {
     private final SocketChannel channel;
     private final ByteBuffer bufferIn;
     private final ByteBuffer bufferOut;
+    private final ArrayDeque<ByteBuffer> queue = new ArrayDeque<>();
 
     private boolean closed = false;
 
@@ -63,12 +67,25 @@ public class ServerContext {
         key.interestOps(SelectionKey.OP_READ);
     }
 
+    public void enqueue(Packet packet) {
+        queue.offer(packet.toByteBuffer().flip());
+        processOut();
+        updateInterestOps();
+    }
+
     private void processIn() {
         // TODO
     }
 
     private void processOut() {
-        // TODO
+        while (bufferOut.hasRemaining() && !queue.isEmpty()) {
+            var msg = queue.peek();
+            if (!msg.hasRemaining()) {
+                queue.pop();
+                continue;
+            }
+            Buffers.tryPut(bufferOut, msg);
+        }
     }
 
     private void updateInterestOps() {
