@@ -5,7 +5,7 @@ import java.net.InetSocketAddress;
 
 public class Application {
 
-    public static void main(String[] args) throws NumberFormatException, IOException {
+    public static void main(String[] args) throws NumberFormatException, IOException, InterruptedException {
         if (args.length != 3) {
             usage();
             return;

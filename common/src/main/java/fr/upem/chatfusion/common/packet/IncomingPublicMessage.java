@@ -22,6 +22,6 @@ public record IncomingPublicMessage(String author, String message) implements Pa
 
     @Override
     public String toString() {
-        return author() + ": " + message();
+        return author + ": " + message;
     }
 }

@@ -111,6 +111,7 @@ public class Server {
     }
 
     public boolean authenticateGuest(ClientContext client) {
+        System.out.println("try to add " + client.getNickname());
         return clients.putIfAbsent(client.getNickname(), client) == null;
     }
 

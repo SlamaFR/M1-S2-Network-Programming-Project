@@ -21,6 +21,8 @@ public record AuthenticationGuest(String nickname) implements Packet {
     @Override
     public String toString() {
         return "AuthenticationGuest{" +
+                "opCode='Ox" + Packet.OpCode.AUTHENTICATION_GUEST.getCode() + "' " +
+                "nicknameSize=" + nickname.length() + " " +
                 "nickname='" + nickname + '\'' +
                 '}';
     }

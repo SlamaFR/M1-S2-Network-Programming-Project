@@ -1,6 +1,7 @@
 package fr.upem.chatfusion.common;
 
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 public final class Buffers {
@@ -49,6 +50,8 @@ public final class Buffers {
     public static ByteBuffer putEncodedString(ByteBuffer dst, ByteBuffer string) {
         Objects.requireNonNull(dst);
         Objects.requireNonNull(string);
+        //System.out.println(" ajout de : " + StandardCharsets.UTF_8.decode(string));
+        //string.flip();
         dst.putInt(string.remaining());
         dst.put(string);
         return dst;
