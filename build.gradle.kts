@@ -1,5 +1,22 @@
 plugins {
     java
+    application
+}
+
+fun Project.jarConfig(mainClassFQName: String) {
+    application {
+        mainClass.set(mainClassFQName)
+    }
+
+    tasks.jar {
+        archiveFileName.set("${project.name}.jar")
+        manifest {
+            attributes["Main-Class"] = mainClassFQName
+        }
+        configurations["compileClasspath"].forEach {
+            from(zipTree(it.absolutePath))
+        }
+    }
 }
 
 allprojects {
@@ -20,4 +37,24 @@ allprojects {
     tasks.getByName<Test>("test") {
         useJUnitPlatform()
     }
+}
+
+project(":client") {
+    apply(plugin = "application")
+
+    dependencies {
+        implementation(project(":common"))
+    }
+
+    jarConfig("fr.upem.chatfusion.client.Application")
+}
+
+project(":server") {
+    apply(plugin = "application")
+
+    dependencies {
+        implementation(project(":common"))
+    }
+
+    jarConfig("fr.upem.chatfusion.server.Application")
 }

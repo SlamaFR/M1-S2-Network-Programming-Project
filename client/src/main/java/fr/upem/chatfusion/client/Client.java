@@ -1,7 +1,7 @@
 package fr.upem.chatfusion.client;
 
 //import fr.upem.chatfusion.common.Helpers;
-import fr.upem.chatfusion.common.packet.AuthenticationGuest;
+import fr.upem.chatfusion.common.packet.PrivateMessage;
 import fr.upem.chatfusion.common.packet.OutgoingPublicMessage;
 
 import java.io.IOException;
@@ -10,6 +10,7 @@ import java.net.InetSocketAddress;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
+import java.util.Arrays;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Logger;
@@ -91,9 +92,20 @@ public class Client {
     private void processCommands() {
         while (!commandQueue.isEmpty()) {
             String cmd = commandQueue.poll();
-            if (cmd.startsWith("/")) {
-                // Private message
-            } else if (cmd.startsWith("@")) {
+            if (cmd.startsWith("@")) {
+                cmd = cmd.substring(1);
+                var split = cmd.split(" ");
+                if (split.length < 2) {
+                    System.out.println("Usage: @<Nickname>:<Server ID> <Message>");
+                    continue;
+                }
+                var expeditionData = split[0].split(":");
+                var recipient = expeditionData[0];
+                var serverId = Integer.parseInt(expeditionData[1]);
+                var message = String.join(" ", Arrays.copyOfRange(split, 1, split.length));
+                var packet = new PrivateMessage(serverId, recipient, message);
+                context.enqueue(packet);
+            } else if (cmd.startsWith("/")) {
                 // File transfer
             } else {
                 // Public message

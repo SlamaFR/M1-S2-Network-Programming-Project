@@ -1,7 +1,7 @@
 package fr.upem.chatfusion.server;
 
 import fr.upem.chatfusion.common.Channels;
-import fr.upem.chatfusion.common.packet.IncomingPublicMessage;
+import fr.upem.chatfusion.common.Helpers;
 import fr.upem.chatfusion.common.packet.Packet;
 
 import java.io.IOException;
@@ -11,6 +11,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.logging.Level;
@@ -26,8 +27,11 @@ public class Server {
     private final Selector selector;
     private final BlockingQueue<String> commandQueue;
     private final Thread console;
-
+    private final HashSet<ServerContext> siblings;
     private final HashMap<String, ClientContext> clients;
+
+    private ServerContext leader = null;
+    private boolean fusionLock = false;
 
     public Server(int port, int id) throws IOException {
         this.id = id;
@@ -37,6 +41,7 @@ public class Server {
         this.commandQueue = new LinkedBlockingQueue<>();
         this.console = new Thread(new Console(this));
         this.console.setDaemon(true);
+        this.siblings = new HashSet<>();
         this.clients = new HashMap<>();
     }
 
@@ -47,6 +52,7 @@ public class Server {
         System.out.println("Server ID#" + id + " started");
         while (!Thread.interrupted() && serverSocketChannel.isOpen()) {
             try {
+                Helpers.printKeys(selector);
                 selector.select(this::treatKey);
                 processCommands();
             } catch (UncheckedIOException tunneled) {
@@ -89,11 +95,20 @@ public class Server {
 
     private void processCommands() {
         while (!commandQueue.isEmpty()) {
-            switch (commandQueue.poll().toUpperCase()) {
-                case "STOP" -> {
-                    logger.info("Stopping server...");
-                    Channels.silentlyClose(serverSocketChannel);
+            var cmd = commandQueue.poll();
+            if ("STOP".equalsIgnoreCase(cmd)) {
+                logger.info("Stopping server...");
+                Channels.silentlyClose(serverSocketChannel);
+            } else if (cmd.toUpperCase().startsWith("FUSION")) {
+                var split = cmd.split(" ");
+                if (split.length != 3) {
+                    System.out.println("Invalid syntax");
+                    System.out.println("> FUSION <IP> <Port>");
+                    continue;
                 }
+                var socket = new InetSocketAddress(split[1], Integer.parseInt(split[2]));
+                System.out.println("Fusion with " + socket + "...");
+                // TODO
             }
         }
     }
@@ -111,7 +126,9 @@ public class Server {
     }
 
     public boolean authenticateGuest(ClientContext client) {
-        return clients.putIfAbsent(client.getNickname(), client) == null;
+        var e = clients.putIfAbsent(client.getNickname(), client) == null;
+        System.out.println(clients);
+        return e;
     }
 
     public void disconnect(ClientContext client) {
@@ -122,6 +139,14 @@ public class Server {
         for (var client : clients.values()) {
             client.enqueuePacket(packet);
         }
+    }
+
+    public void sendPacket(Packet packet, String nickname) {
+        clients.get(nickname).enqueuePacket(packet);
+    }
+
+    public boolean isLeader() {
+        return leader == null;
     }
 
 }

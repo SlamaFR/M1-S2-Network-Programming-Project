@@ -8,6 +8,7 @@ import fr.upem.chatfusion.common.packet.IncomingPublicMessage;
 import fr.upem.chatfusion.common.packet.Packet;
 import fr.upem.chatfusion.common.reader.AuthGuestResponseReader;
 import fr.upem.chatfusion.common.reader.InPublicMessageReader;
+import fr.upem.chatfusion.common.reader.PrivateMessageReader;
 import fr.upem.chatfusion.common.reader.ReaderHandler;
 
 import java.io.IOException;
@@ -31,6 +32,7 @@ public class ServerContext {
     private final ArrayDeque<ByteBuffer> queue = new ArrayDeque<>();
 
     private final InPublicMessageReader inPublicMessageReader;
+    private final PrivateMessageReader privateMessageReader;
     private final AuthGuestResponseReader authGuestResponseReader;
 
     private boolean closed = false;
@@ -43,6 +45,7 @@ public class ServerContext {
         this.bufferIn = ByteBuffer.allocateDirect(BUFFER_SIZE);
         this.bufferOut = ByteBuffer.allocateDirect(BUFFER_SIZE);
         this.inPublicMessageReader = new InPublicMessageReader();
+        this.privateMessageReader = new PrivateMessageReader();
         this.authGuestResponseReader = new AuthGuestResponseReader();
     }
 
@@ -98,21 +101,20 @@ public class ServerContext {
                 System.out.println("Received packet: " + code);
                 switch (code) {
                     case AUTHENTICATION_RESPONSE -> {
-                        if(isConnected) {
+                        if (isConnected) {
                             System.out.println("Already connected. This should never happen");
                             return;
                         }
-                        if (!ReaderHandler.handlePacketReader(authGuestResponseReader, bufferIn)){
-                            return ;
+                        if (!ReaderHandler.handlePacketReader(authGuestResponseReader, bufferIn)) {
+                            return;
                         }
                         var response = authGuestResponseReader.get();
                         if (response.code() == AuthenticationGuestResponse.AuthGuestResp.AUTHENTICATION_GUEST_SUCCESS) {
                             System.out.println("WELCOME " + client.getNickname() + " ON THE CHAT FUSION SERVER !");
                             isConnected = true;
-                        }
-                        else {
+                        } else {
                             // TODO manage different AuthGuestRespCode when user connexion with pwd will be implemented
-                            System.out.println("Sorry " + client.getNickname() +" someone with same name is already present.\nTry again with another login.");
+                            System.out.println("Sorry " + client.getNickname() + " someone with same name is already present.\nTry again with another login.");
                             closed = true;
                             return;
                         }
@@ -124,6 +126,14 @@ public class ServerContext {
                         var message = inPublicMessageReader.get();
                         System.out.println(message);
                         inPublicMessageReader.reset();
+                    }
+                    case PRIVATE_MESSAGE -> {
+                        if (!ReaderHandler.handlePacketReader(privateMessageReader, bufferIn)) {
+                            return;
+                        }
+                        var message = privateMessageReader.get();
+                        System.out.printf("From %s#%d: %s%n", message.nickname(), message.serverId(), message.message());
+                        privateMessageReader.reset();
                     }
                     default -> {
                         LOGGER.severe("OpCode not implemented: " + code);
@@ -161,7 +171,7 @@ public class ServerContext {
         }
         if (interestOps == 0) {
             Channels.silentlyClose(channel);
-            Thread.currentThread().interrupt();
+            //Thread.currentThread().interrupt();
             return;
         }
         key.interestOps(interestOps);

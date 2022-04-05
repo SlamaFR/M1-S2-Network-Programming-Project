@@ -6,7 +6,9 @@ import fr.upem.chatfusion.common.packet.AuthenticationGuest;
 import fr.upem.chatfusion.common.packet.AuthenticationGuestResponse;
 import fr.upem.chatfusion.common.packet.IncomingPublicMessage;
 import fr.upem.chatfusion.common.packet.Packet;
+import fr.upem.chatfusion.common.packet.PrivateMessage;
 import fr.upem.chatfusion.common.reader.AuthGuestReader;
+import fr.upem.chatfusion.common.reader.PrivateMessageReader;
 import fr.upem.chatfusion.common.reader.OutPublicMessageReader;
 import fr.upem.chatfusion.common.reader.ReaderHandler;
 
@@ -15,7 +17,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.logging.Logger;
 
@@ -34,6 +35,7 @@ public class ClientContext implements Closeable {
 
     private final AuthGuestReader authGuestReader;
     private final OutPublicMessageReader outPublicMessageReader;
+    private final PrivateMessageReader outPrivateMessageReader;
 
     private boolean authenticated = false;
     private String nickname;
@@ -49,6 +51,7 @@ public class ClientContext implements Closeable {
 
         this.authGuestReader = new AuthGuestReader();
         this.outPublicMessageReader = new OutPublicMessageReader();
+        this.outPrivateMessageReader = new PrivateMessageReader();
     }
 
     /**
@@ -95,6 +98,7 @@ public class ClientContext implements Closeable {
 
     /**
      * Adds a packet to the queue.
+     *
      * @param packet the packet to add
      */
     public void enqueuePacket(Packet packet) {
@@ -133,6 +137,15 @@ public class ClientContext implements Closeable {
                         var packet = new IncomingPublicMessage(nickname, message.message());
                         server.dispatchPacket(packet);
                         outPublicMessageReader.reset();
+                    }
+                    case PRIVATE_MESSAGE -> {
+                        if (!ReaderHandler.handlePacketReader(outPrivateMessageReader, bufferIn)) {
+                            return;
+                        }
+                        var message = outPrivateMessageReader.get();
+                        var packet = new PrivateMessage(message.serverId(), nickname, message.message());
+                        server.sendPacket(packet, message.nickname());
+                        outPrivateMessageReader.reset();
                     }
                     default -> {
                         LOGGER.severe("OpCode not implemented: " + code);
@@ -185,6 +198,7 @@ public class ClientContext implements Closeable {
         if (!authenticated) {
             System.out.println("Could not authenticate guest");
             enqueuePacket(new AuthenticationGuestResponse(AuthGuestResp.AUTHENTICATION_GUEST_FAILED_NICKNAME_GUEST));
+            closed = true;
             // TODO : check in DB if it's because of a client registered and not a guest.
         } else {
             System.out.println("Guest authenticated");
@@ -195,7 +209,9 @@ public class ClientContext implements Closeable {
     @Override
     public void close() {
         Channels.silentlyClose(channel);
-        server.disconnect(this);
+        if (authenticated) {
+            server.disconnect(this);
+        }
     }
 
     public String getNickname() {
