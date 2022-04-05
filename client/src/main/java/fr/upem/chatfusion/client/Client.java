@@ -1,10 +1,9 @@
 package fr.upem.chatfusion.client;
 
-import fr.upem.chatfusion.common.Helpers;
+//import fr.upem.chatfusion.common.Helpers;
 import fr.upem.chatfusion.common.packet.AuthenticationGuest;
 import fr.upem.chatfusion.common.packet.OutgoingPublicMessage;
 
-import javax.naming.Context;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
@@ -27,6 +26,7 @@ public class Client {
     private final Thread console;
 
     private ServerContext context;
+
 
     public Client(String nickname, InetSocketAddress inetSocketAddress) throws IOException {
         this.serverAddress = inetSocketAddress;

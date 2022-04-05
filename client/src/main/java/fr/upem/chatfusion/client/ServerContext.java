@@ -3,8 +3,10 @@ package fr.upem.chatfusion.client;
 import fr.upem.chatfusion.common.Buffers;
 import fr.upem.chatfusion.common.Channels;
 import fr.upem.chatfusion.common.packet.AuthenticationGuest;
+import fr.upem.chatfusion.common.packet.AuthenticationGuestResponse;
 import fr.upem.chatfusion.common.packet.IncomingPublicMessage;
 import fr.upem.chatfusion.common.packet.Packet;
+import fr.upem.chatfusion.common.reader.AuthGuestResponseReader;
 import fr.upem.chatfusion.common.reader.InPublicMessageReader;
 import fr.upem.chatfusion.common.reader.ReaderHandler;
 
@@ -12,6 +14,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.logging.Logger;
 
@@ -28,8 +31,10 @@ public class ServerContext {
     private final ArrayDeque<ByteBuffer> queue = new ArrayDeque<>();
 
     private final InPublicMessageReader inPublicMessageReader;
+    private final AuthGuestResponseReader authGuestResponseReader;
 
     private boolean closed = false;
+    private boolean isConnected = false;
 
     public ServerContext(Client client, SelectionKey key) {
         this.client = client;
@@ -38,6 +43,7 @@ public class ServerContext {
         this.bufferIn = ByteBuffer.allocateDirect(BUFFER_SIZE);
         this.bufferOut = ByteBuffer.allocateDirect(BUFFER_SIZE);
         this.inPublicMessageReader = new InPublicMessageReader();
+        this.authGuestResponseReader = new AuthGuestResponseReader();
     }
 
     public void doRead() throws IOException {
@@ -91,6 +97,26 @@ public class ServerContext {
                 bufferIn.compact();
                 System.out.println("Received packet: " + code);
                 switch (code) {
+                    case AUTHENTICATION_RESPONSE -> {
+                        if(isConnected) {
+                            System.out.println("Already connected. This should never happen");
+                            return;
+                        }
+                        if (!ReaderHandler.handlePacketReader(authGuestResponseReader, bufferIn)){
+                            return ;
+                        }
+                        var response = authGuestResponseReader.get();
+                        if (response.code() == AuthenticationGuestResponse.AuthGuestResp.AUTHENTICATION_GUEST_SUCCESS) {
+                            System.out.println("WELCOME " + client.getNickname() + " ON THE CHAT FUSION SERVER !");
+                            isConnected = true;
+                        }
+                        else {
+                            // TODO manage different AuthGuestRespCode when user connexion with pwd will be implemented
+                            System.out.println("Sorry " + client.getNickname() +" someone with same name is already present.\nTry again with another login.");
+                            closed = true;
+                            return;
+                        }
+                    }
                     case INCOMING_PUBLIC_MESSAGE -> {
                         if (!ReaderHandler.handlePacketReader(inPublicMessageReader, bufferIn)) {
                             return;
@@ -135,6 +161,7 @@ public class ServerContext {
         }
         if (interestOps == 0) {
             Channels.silentlyClose(channel);
+            Thread.currentThread().interrupt();
             return;
         }
         key.interestOps(interestOps);

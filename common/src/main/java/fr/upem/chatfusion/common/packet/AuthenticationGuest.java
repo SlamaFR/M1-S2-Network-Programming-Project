@@ -11,9 +11,9 @@ public record AuthenticationGuest(String nickname) implements Packet {
     @Override
     public ByteBuffer toByteBuffer() {
         var usernameBytes = UTF_8.encode(nickname);
-        var buffer = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + usernameBytes.limit());
+        var buffer = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + usernameBytes.remaining());
 
-        buffer.putInt(Packet.OpCode.AUTHENTICATION_GUEST.getCode());
+        buffer.put(Packet.OpCode.AUTHENTICATION_GUEST.getCode());
         Buffers.putEncodedString(buffer, usernameBytes);
         return buffer;
     }
@@ -21,6 +21,8 @@ public record AuthenticationGuest(String nickname) implements Packet {
     @Override
     public String toString() {
         return "AuthenticationGuest{" +
+                "opCode='Ox" + Packet.OpCode.AUTHENTICATION_GUEST.getCode() + "' " +
+                "nicknameSize=" + nickname.length() + " " +
                 "nickname='" + nickname + '\'' +
                 '}';
     }

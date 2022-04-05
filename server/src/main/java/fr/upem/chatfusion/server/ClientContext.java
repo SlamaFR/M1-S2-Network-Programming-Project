@@ -3,6 +3,7 @@ package fr.upem.chatfusion.server;
 import fr.upem.chatfusion.common.Buffers;
 import fr.upem.chatfusion.common.Channels;
 import fr.upem.chatfusion.common.packet.AuthenticationGuest;
+import fr.upem.chatfusion.common.packet.AuthenticationGuestResponse;
 import fr.upem.chatfusion.common.packet.IncomingPublicMessage;
 import fr.upem.chatfusion.common.packet.Packet;
 import fr.upem.chatfusion.common.reader.AuthGuestReader;
@@ -13,8 +14,11 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.logging.Logger;
+
+import fr.upem.chatfusion.common.packet.AuthenticationGuestResponse.AuthGuestResp;
 
 public class ClientContext {
 
@@ -110,8 +114,9 @@ public class ClientContext {
                         LOGGER.info("authentication");
                         if (authenticated) {
                             // TODO: already authenticated
-                            System.out.println("Already authenticated");
-                            continue;
+                            System.out.println("Already authenticated.. But this should never happen ?!");
+                            closed = true;
+                            return;
                         }
                         if (!ReaderHandler.handlePacketReader(authGuestReader, bufferIn)) {
                             return;
@@ -178,10 +183,11 @@ public class ClientContext {
         this.authenticated = server.authenticateGuest(this);
         if (!authenticated) {
             System.out.println("Could not authenticate guest");
-            // TODO: send error packet
+            enqueuePacket(new AuthenticationGuestResponse(AuthGuestResp.AUTHENTICATION_GUEST_FAILED_NICKNAME_GUEST));
+            // TODO : check in DB if it's because of a client registered and not a guest.
         } else {
             System.out.println("Guest authenticated");
-            // TODO: send success packet
+            enqueuePacket(new AuthenticationGuestResponse(AuthGuestResp.AUTHENTICATION_GUEST_SUCCESS));
         }
     }
 

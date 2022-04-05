@@ -5,12 +5,12 @@ import java.net.InetSocketAddress;
 
 public class Application {
 
-    public static void main(String[] args) throws NumberFormatException, IOException {
-        if (args.length != 2) {
+    public static void main(String[] args) throws NumberFormatException, IOException, InterruptedException {
+        if (args.length != 3) {
             usage();
             return;
         }
-        new Client(new InetSocketAddress(args[0], Integer.parseInt(args[1]))).launch();
+        new Client(args[0], new InetSocketAddress(args[1], Integer.parseInt(args[2]))).launch();
     }
 
     private static void usage() {
