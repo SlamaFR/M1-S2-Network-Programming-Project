@@ -10,6 +10,7 @@ import fr.upem.chatfusion.common.reader.AuthGuestReader;
 import fr.upem.chatfusion.common.reader.OutPublicMessageReader;
 import fr.upem.chatfusion.common.reader.ReaderHandler;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
@@ -20,7 +21,7 @@ import java.util.logging.Logger;
 
 import fr.upem.chatfusion.common.packet.AuthenticationGuestResponse.AuthGuestResp;
 
-public class ClientContext {
+public class ClientContext implements Closeable {
 
     private static final Logger LOGGER = Logger.getLogger(ClientContext.class.getName());
 
@@ -80,7 +81,7 @@ public class ClientContext {
     public void doWrite() throws IOException {
         bufferOut.flip();
         if (closed && !bufferOut.hasRemaining()) {
-            Channels.silentlyClose(channel);
+            close();
             return;
         }
         var bytes = channel.write(bufferOut);
@@ -124,7 +125,7 @@ public class ClientContext {
                         handleAuthenticationGuest(authGuestReader.get());
                         authGuestReader.reset();
                     }
-                    case OUTGOING_PRIVATE_MESSAGE -> {
+                    case OUTGOING_PUBLIC_MESSAGE -> {
                         if (!ReaderHandler.handlePacketReader(outPublicMessageReader, bufferIn)) {
                             return;
                         }
@@ -172,7 +173,7 @@ public class ClientContext {
             interestOps |= SelectionKey.OP_WRITE;
         }
         if (interestOps == 0) {
-            Channels.silentlyClose(channel);
+            close();
             return;
         }
         key.interestOps(interestOps);
@@ -189,6 +190,12 @@ public class ClientContext {
             System.out.println("Guest authenticated");
             enqueuePacket(new AuthenticationGuestResponse(AuthGuestResp.AUTHENTICATION_GUEST_SUCCESS));
         }
+    }
+
+    @Override
+    public void close() {
+        Channels.silentlyClose(channel);
+        server.disconnect(this);
     }
 
     public String getNickname() {

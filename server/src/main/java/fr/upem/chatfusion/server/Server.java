@@ -111,12 +111,14 @@ public class Server {
     }
 
     public boolean authenticateGuest(ClientContext client) {
-        System.out.println("try to add " + client.getNickname());
         return clients.putIfAbsent(client.getNickname(), client) == null;
     }
 
+    public void disconnect(ClientContext client) {
+        clients.remove(client.getNickname());
+    }
+
     public void dispatchPacket(Packet packet) {
-        System.out.println("??");
         for (var client : clients.values()) {
             client.enqueuePacket(packet);
         }

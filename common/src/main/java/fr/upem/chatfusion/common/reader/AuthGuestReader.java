@@ -32,7 +32,6 @@ public class AuthGuestReader implements Reader<AuthenticationGuest> {
         }
         nickname = stringReader.get();
         state = State.DONE;
-        System.out.println("THE NICKNAME = " + nickname);
         packet = new AuthenticationGuest(nickname);
         return ProcessStatus.DONE;
     }
