@@ -21,7 +21,7 @@ public final class ReaderHandler {
      * @return {@code true} if the packet was fully read,
      * {@code false} otherwise.
      */
-    public static boolean handlePacketReader(Reader<? extends Packet> reader, ByteBuffer buffer) {
+    public static boolean handlePacketReader(Reader<?> reader, ByteBuffer buffer) {
         switch (reader.process(buffer)) {
             case DONE -> {
                 return true;

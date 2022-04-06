@@ -4,9 +4,10 @@ import fr.upem.chatfusion.common.Buffers;
 import fr.upem.chatfusion.common.Channels;
 import fr.upem.chatfusion.common.packet.AuthenticationGuest;
 import fr.upem.chatfusion.common.packet.AuthenticationGuestResponse;
+import fr.upem.chatfusion.common.packet.IncomingPrivateMessage;
 import fr.upem.chatfusion.common.packet.IncomingPublicMessage;
 import fr.upem.chatfusion.common.packet.Packet;
-import fr.upem.chatfusion.common.packet.PrivateMessage;
+import fr.upem.chatfusion.common.frame.PrivateMessageFrame;
 import fr.upem.chatfusion.common.reader.AuthGuestReader;
 import fr.upem.chatfusion.common.reader.PrivateMessageReader;
 import fr.upem.chatfusion.common.reader.OutPublicMessageReader;
@@ -116,10 +117,7 @@ public class ClientContext implements Closeable {
                 System.out.println("Received packet: " + code);
                 switch (code) {
                     case AUTHENTICATION_GUEST -> {
-                        LOGGER.info("authentication");
                         if (authenticated) {
-                            // TODO: already authenticated
-                            System.out.println("Already authenticated.. But this should never happen ?!");
                             closed = true;
                             return;
                         }
@@ -138,12 +136,12 @@ public class ClientContext implements Closeable {
                         server.dispatchPacket(packet);
                         outPublicMessageReader.reset();
                     }
-                    case PRIVATE_MESSAGE -> {
+                    case OUTGOING_PRIVATE_MESSAGE -> {
                         if (!ReaderHandler.handlePacketReader(outPrivateMessageReader, bufferIn)) {
                             return;
                         }
                         var message = outPrivateMessageReader.get();
-                        var packet = new PrivateMessage(message.serverId(), nickname, message.message());
+                        var packet = new IncomingPrivateMessage(message.serverId(), nickname, message.message());
                         server.sendPacket(packet, message.nickname());
                         outPrivateMessageReader.reset();
                     }

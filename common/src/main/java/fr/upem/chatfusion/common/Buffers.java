@@ -50,8 +50,7 @@ public final class Buffers {
     public static ByteBuffer putEncodedString(ByteBuffer dst, ByteBuffer string) {
         Objects.requireNonNull(dst);
         Objects.requireNonNull(string);
-        //System.out.println(" ajout de : " + StandardCharsets.UTF_8.decode(string));
-        //string.flip();
+
         dst.putInt(string.remaining());
         dst.put(string);
         return dst;

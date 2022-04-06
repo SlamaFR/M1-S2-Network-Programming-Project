@@ -127,7 +127,7 @@ public class ServerContext {
                         System.out.println(message);
                         inPublicMessageReader.reset();
                     }
-                    case PRIVATE_MESSAGE -> {
+                    case INCOMING_PRIVATE_MESSAGE -> {
                         if (!ReaderHandler.handlePacketReader(privateMessageReader, bufferIn)) {
                             return;
                         }

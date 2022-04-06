@@ -1,7 +1,8 @@
 package fr.upem.chatfusion.client;
 
 //import fr.upem.chatfusion.common.Helpers;
-import fr.upem.chatfusion.common.packet.PrivateMessage;
+import fr.upem.chatfusion.common.frame.PrivateMessageFrame;
+import fr.upem.chatfusion.common.packet.OutgoingPrivateMessage;
 import fr.upem.chatfusion.common.packet.OutgoingPublicMessage;
 
 import java.io.IOException;
@@ -103,7 +104,7 @@ public class Client {
                 var recipient = expeditionData[0];
                 var serverId = Integer.parseInt(expeditionData[1]);
                 var message = String.join(" ", Arrays.copyOfRange(split, 1, split.length));
-                var packet = new PrivateMessage(serverId, recipient, message);
+                var packet = new OutgoingPrivateMessage(serverId, recipient, message);
                 context.enqueue(packet);
             } else if (cmd.startsWith("/")) {
                 // File transfer

@@ -1,10 +1,10 @@
 package fr.upem.chatfusion.common.reader;
 
-import fr.upem.chatfusion.common.packet.PrivateMessage;
+import fr.upem.chatfusion.common.frame.PrivateMessageFrame;
 
 import java.nio.ByteBuffer;
 
-public class PrivateMessageReader implements Reader<PrivateMessage> {
+public class PrivateMessageReader implements Reader<PrivateMessageFrame> {
 
     private enum State {
         DONE, WAITING_SERVER_ID, WAITING_RECIPIENT, WAITING_MESSAGE, ERROR
@@ -12,7 +12,7 @@ public class PrivateMessageReader implements Reader<PrivateMessage> {
 
     private final IntReader intReader;
     private final StringReader stringReader;
-    private PrivateMessage packet;
+    private PrivateMessageFrame packet;
     private State state;
 
     private int serverId;
@@ -38,7 +38,6 @@ public class PrivateMessageReader implements Reader<PrivateMessage> {
             serverId = intReader.get();
             state = State.WAITING_RECIPIENT;
         }
-        System.out.println(serverId);
         if (state == State.WAITING_RECIPIENT) {
             var status = stringReader.process(buffer);
             if (status != ProcessStatus.DONE) {
@@ -48,7 +47,6 @@ public class PrivateMessageReader implements Reader<PrivateMessage> {
             stringReader.reset();
             state = State.WAITING_MESSAGE;
         }
-        System.out.println(nickname);
         if (state == State.WAITING_MESSAGE) {
             var status = stringReader.process(buffer);
             if (status != ProcessStatus.DONE) {
@@ -56,14 +54,13 @@ public class PrivateMessageReader implements Reader<PrivateMessage> {
             }
             message = stringReader.get();
         }
-        System.out.println(message);
         state = State.DONE;
-        packet = new PrivateMessage(serverId, nickname, message);
+        packet = new PrivateMessageFrame(serverId, nickname, message);
         return ProcessStatus.DONE;
     }
 
     @Override
-    public PrivateMessage get() {
+    public PrivateMessageFrame get() {
         if (state != State.DONE) {
             throw new IllegalStateException();
         }

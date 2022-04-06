@@ -127,7 +127,6 @@ public class Server {
 
     public boolean authenticateGuest(ClientContext client) {
         var e = clients.putIfAbsent(client.getNickname(), client) == null;
-        System.out.println(clients);
         return e;
     }
 
