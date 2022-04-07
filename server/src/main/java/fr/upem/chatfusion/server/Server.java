@@ -141,7 +141,9 @@ public class Server {
     }
 
     public void sendPacket(Packet packet, String nickname) {
-        clients.get(nickname).enqueuePacket(packet);
+        if (clients.containsKey(nickname)) {
+            clients.get(nickname).enqueuePacket(packet);
+        }
     }
 
     public boolean isLeader() {

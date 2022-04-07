@@ -1,6 +1,8 @@
 package fr.upem.chatfusion.client;
 
-//import fr.upem.chatfusion.common.Helpers;
+import fr.upem.chatfusion.common.Helpers;
+
+import fr.upem.chatfusion.common.Helpers;
 import fr.upem.chatfusion.common.frame.PrivateMessageFrame;
 import fr.upem.chatfusion.common.packet.OutgoingPrivateMessage;
 import fr.upem.chatfusion.common.packet.OutgoingPublicMessage;
@@ -11,6 +13,7 @@ import java.net.InetSocketAddress;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -26,11 +29,12 @@ public class Client {
     private final String nickname;
     private final BlockingQueue<String> commandQueue;
     private final Thread console;
+    private final Path basePath;
 
     private ServerContext context;
 
 
-    public Client(String nickname, InetSocketAddress inetSocketAddress) throws IOException {
+    public Client(String nickname, InetSocketAddress inetSocketAddress, Path path) throws IOException {
         this.serverAddress = inetSocketAddress;
         this.nickname = nickname;
         this.channel = SocketChannel.open();
@@ -38,6 +42,7 @@ public class Client {
         this.commandQueue = new LinkedBlockingQueue<>();
         this.console = new Thread(new Console(this));
         this.console.setDaemon(true);
+        this.basePath = path;
     }
 
     public void launch() throws IOException {
@@ -51,7 +56,7 @@ public class Client {
 
         while (!Thread.interrupted()) {
             try {
-                //Helpers.printKeys(selector);
+                Helpers.printKeys(selector);
                 selector.select(k -> {
                     try {
                         treatKey(k);
@@ -107,7 +112,23 @@ public class Client {
                 var packet = new OutgoingPrivateMessage(serverId, recipient, message);
                 context.enqueue(packet);
             } else if (cmd.startsWith("/")) {
-                // File transfer
+                cmd = cmd.substring(1);
+                var split = cmd.split(" ");
+                if (split.length < 2) {
+                    System.out.println("Usage: @<Nickname>:<Server ID> <Message>");
+                    continue;
+                }
+                var expeditionData = split[0].split(":");
+                var recipient = expeditionData[0];
+                var serverId = Integer.parseInt(expeditionData[1]);
+                var filepath = String.join(" ", Arrays.copyOfRange(split, 1, split.length));
+                try {
+                    new FileSender(context, serverId, recipient, Path.of(basePath + "/" + filepath)).sendAsync();
+                } catch (IOException e) {
+                    System.out.println("chelou");
+                    System.out.println(e.getMessage());
+                }
+
             } else {
                 // Public message
                 var packet = new OutgoingPublicMessage(cmd);
@@ -118,5 +139,13 @@ public class Client {
 
     public String getNickname() {
         return nickname;
+    }
+
+    public void wakeup() {
+        selector.wakeup();
+    }
+
+    public Path getBasePath() {
+        return basePath;
     }
 }

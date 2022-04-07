@@ -4,11 +4,12 @@ import fr.upem.chatfusion.common.Buffers;
 import fr.upem.chatfusion.common.Channels;
 import fr.upem.chatfusion.common.packet.AuthenticationGuest;
 import fr.upem.chatfusion.common.packet.AuthenticationGuestResponse;
+import fr.upem.chatfusion.common.packet.FileChunkFrame;
 import fr.upem.chatfusion.common.packet.IncomingPrivateMessage;
 import fr.upem.chatfusion.common.packet.IncomingPublicMessage;
 import fr.upem.chatfusion.common.packet.Packet;
-import fr.upem.chatfusion.common.frame.PrivateMessageFrame;
 import fr.upem.chatfusion.common.reader.AuthGuestReader;
+import fr.upem.chatfusion.common.reader.FileChunkReader;
 import fr.upem.chatfusion.common.reader.PrivateMessageReader;
 import fr.upem.chatfusion.common.reader.OutPublicMessageReader;
 import fr.upem.chatfusion.common.reader.ReaderHandler;
@@ -37,10 +38,13 @@ public class ClientContext implements Closeable {
     private final AuthGuestReader authGuestReader;
     private final OutPublicMessageReader outPublicMessageReader;
     private final PrivateMessageReader outPrivateMessageReader;
+    private final FileChunkReader fileChunkReader;
 
     private boolean authenticated = false;
     private String nickname;
     private boolean closed = false;
+
+    private Packet.OpCode currentCode = null;
 
     public ClientContext(Server server, SelectionKey key) {
         this.server = server;
@@ -53,6 +57,7 @@ public class ClientContext implements Closeable {
         this.authGuestReader = new AuthGuestReader();
         this.outPublicMessageReader = new OutPublicMessageReader();
         this.outPrivateMessageReader = new PrivateMessageReader();
+        this.fileChunkReader = new FileChunkReader();
     }
 
     /**
@@ -112,10 +117,12 @@ public class ClientContext implements Closeable {
         bufferIn.flip();
         while (bufferIn.hasRemaining()) {
             try {
-                var code = Packet.OpCode.fromCode(bufferIn.get());
-                bufferIn.compact();
-                System.out.println("Received packet: " + code);
-                switch (code) {
+                if (currentCode == null) {
+                    currentCode = Packet.OpCode.fromCode(bufferIn.get());
+                    bufferIn.compact();
+                }
+                System.out.println("Received packet: " + currentCode);
+                switch (currentCode) {
                     case AUTHENTICATION_GUEST -> {
                         if (authenticated) {
                             closed = true;
@@ -126,6 +133,7 @@ public class ClientContext implements Closeable {
                         }
                         handleAuthenticationGuest(authGuestReader.get());
                         authGuestReader.reset();
+                        currentCode = null;
                     }
                     case OUTGOING_PUBLIC_MESSAGE -> {
                         if (!ReaderHandler.handlePacketReader(outPublicMessageReader, bufferIn)) {
@@ -135,6 +143,7 @@ public class ClientContext implements Closeable {
                         var packet = new IncomingPublicMessage(nickname, message.message());
                         server.dispatchPacket(packet);
                         outPublicMessageReader.reset();
+                        currentCode = null;
                     }
                     case OUTGOING_PRIVATE_MESSAGE -> {
                         if (!ReaderHandler.handlePacketReader(outPrivateMessageReader, bufferIn)) {
@@ -144,9 +153,23 @@ public class ClientContext implements Closeable {
                         var packet = new IncomingPrivateMessage(message.serverId(), nickname, message.message());
                         server.sendPacket(packet, message.nickname());
                         outPrivateMessageReader.reset();
+                        currentCode = null;
+                    }
+                    case FILE_CHUNK -> {
+                        if (!ReaderHandler.handlePacketReader(fileChunkReader, bufferIn)) {
+                            System.out.println("Missing file chunk");
+                            System.out.println(bufferIn);
+                            return;
+                        }
+                        System.out.println("RECEIVED FULL FILE CHUNK");
+                        var chunk = fileChunkReader.get();
+                        var packet = new FileChunkFrame(chunk.serverId(), nickname, chunk.filename(), chunk.chunkNumber(), chunk.chunkSize(), chunk.chunkData());
+                        server.sendPacket(packet, chunk.nickname());
+                        fileChunkReader.reset();
+                        currentCode = null;
                     }
                     default -> {
-                        LOGGER.severe("OpCode not implemented: " + code);
+                        LOGGER.severe("OpCode not implemented: " + currentCode);
                         closed = true;
                         return;
                     }

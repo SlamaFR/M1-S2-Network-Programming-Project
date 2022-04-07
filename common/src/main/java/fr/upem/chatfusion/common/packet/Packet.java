@@ -20,7 +20,7 @@ public interface Packet {
         OUTGOING_PRIVATE_MESSAGE(0x30),
         INCOMING_PRIVATE_MESSAGE(0x31),
 
-        OUTGOING_FILE_CHUNK(0x40),
+        FILE_CHUNK(0x40),
         INCOMING_FILE_CHUNK(0x41),
 
         PACKET_FORWARD(0x50),
