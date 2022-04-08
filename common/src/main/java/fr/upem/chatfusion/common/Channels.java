@@ -6,7 +6,7 @@ import java.nio.channels.SelectionKey;
 public final class Channels {
 
     private Channels() {
-        throw new AssertionError("No fr.upem.chatfusion.common.Channels instances for you!");
+        throw new AssertionError("No instances for you!");
     }
 
     public static void silentlyClose(Channel channel) {

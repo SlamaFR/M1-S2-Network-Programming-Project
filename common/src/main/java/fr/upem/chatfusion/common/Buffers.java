@@ -1,13 +1,12 @@
 package fr.upem.chatfusion.common;
 
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 public final class Buffers {
 
     private Buffers() {
-        throw new AssertionError("No fr.upem.chatfusion.common.Buffers instances for you!");
+        throw new AssertionError("No instances for you!");
     }
 
     /**
