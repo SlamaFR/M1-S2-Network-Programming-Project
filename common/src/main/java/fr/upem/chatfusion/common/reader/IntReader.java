@@ -10,8 +10,9 @@ public class IntReader implements Reader<Integer> {
         DONE, WAITING, ERROR
     }
 
+    private final ByteBuffer internalBuffer = ByteBuffer.allocate(Integer.BYTES);
+
     private State state = State.WAITING;
-    private final ByteBuffer internalBuffer = ByteBuffer.allocate(Integer.BYTES); // write-mode
     private int value;
 
     @Override

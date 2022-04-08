@@ -10,8 +10,9 @@ public class ByteReader implements Reader<Byte>{
         DONE, WAITING, ERROR
     }
 
+    private final ByteBuffer internalBuffer = ByteBuffer.allocate(Byte.BYTES);
+
     private State state = State.WAITING;
-    private final ByteBuffer internalBuffer = ByteBuffer.allocate(Byte.BYTES); // write-mode
     private byte value;
 
     @Override

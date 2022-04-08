@@ -13,8 +13,8 @@ public class StringReader implements Reader<String> {
 
     private final ByteBuffer internalBuffer = ByteBuffer.allocate(1024);
     private final IntReader intReader = new IntReader();
-    private State state = State.WAITING_LENGTH;
 
+    private State state = State.WAITING_LENGTH;
     private int messageLength;
     private String message;
 
