@@ -25,9 +25,6 @@ public interface Packet {
         PRIVATE_MESSAGE(0x30),
 
         FILE_CHUNK(0x40),
-        INCOMING_FILE_CHUNK(0x41),
-
-        PACKET_FORWARD(0x50),
 
         FUSION_INIT(0xA0),
         FUSION_INIT_OK(0xA1),

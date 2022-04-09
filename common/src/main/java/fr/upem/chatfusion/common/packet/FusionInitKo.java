@@ -1,6 +1,10 @@
 package fr.upem.chatfusion.common.packet;
 
+import fr.upem.chatfusion.common.reader.MultiPartReader;
+import fr.upem.chatfusion.common.reader.Reader;
+
 import java.nio.ByteBuffer;
+import java.util.List;
 
 public record FusionInitKo() implements Packet {
 
@@ -15,5 +19,17 @@ public record FusionInitKo() implements Packet {
     @Override
     public void accept(PacketVisitor visitor) {
         visitor.visit(this);
+    }
+
+    public static Reader<FusionInitKo> getReader() {
+        return new AbstractPacketReader<>() {
+
+            private final MultiPartReader<FusionInitKo> reader = new MultiPartReader<>(List.of(), FusionInitKo::new);
+
+            @Override
+            MultiPartReader<FusionInitKo> reader() {
+                return reader;
+            }
+        };
     }
 }

@@ -3,6 +3,17 @@ package fr.upem.chatfusion.common.reader;
 import fr.upem.chatfusion.common.packet.AuthGst;
 import fr.upem.chatfusion.common.packet.AuthRsp;
 import fr.upem.chatfusion.common.packet.AuthUsr;
+import fr.upem.chatfusion.common.packet.FileChunk;
+import fr.upem.chatfusion.common.packet.FusionAckLeader;
+import fr.upem.chatfusion.common.packet.FusionChangeLeader;
+import fr.upem.chatfusion.common.packet.FusionInit;
+import fr.upem.chatfusion.common.packet.FusionInitFwd;
+import fr.upem.chatfusion.common.packet.FusionInitKo;
+import fr.upem.chatfusion.common.packet.FusionInitOk;
+import fr.upem.chatfusion.common.packet.FusionReq;
+import fr.upem.chatfusion.common.packet.FusionRsp;
+import fr.upem.chatfusion.common.packet.MsgPbl;
+import fr.upem.chatfusion.common.packet.MsgPrv;
 import fr.upem.chatfusion.common.packet.Packet;
 
 import java.nio.ByteBuffer;
@@ -10,9 +21,6 @@ import java.nio.ByteBuffer;
 public class PacketReader implements Reader<Packet> {
 
     private final ByteReader byteReader = new ByteReader();
-    private final Reader<AuthGst> authGstReader = AuthGst.getReader();
-    private final Reader<AuthUsr> authUsrReader = AuthUsr.getReader();
-    private final Reader<AuthRsp> authRspReader = AuthRsp.getReader();
 
     private enum State {
         WAITING_OPCODE, WAITING_DATA, DONE, ERROR
@@ -22,11 +30,22 @@ public class PacketReader implements Reader<Packet> {
     private State state = State.WAITING_OPCODE;
 
     private void updateReader() {
-        this.reader = switch (Packet.OpCode.fromCode(byteReader.get())) {
-            case AUTHENTICATION_GUEST -> authGstReader;
-            case AUTHENTICATION_USER -> authUsrReader;
-            case AUTHENTICATION_RESPONSE -> authRspReader;
-            default -> null;
+        var opCode = Packet.OpCode.fromCode(byteReader.get());
+        this.reader = switch (opCode) {
+            case AUTHENTICATION_GUEST -> AuthGst.getReader();
+            case AUTHENTICATION_USER -> AuthUsr.getReader();
+            case AUTHENTICATION_RESPONSE -> AuthRsp.getReader();
+            case FILE_CHUNK -> FileChunk.getReader();
+            case FUSION_ACKNOWLEDGE_LEADER -> FusionAckLeader.getReader();
+            case FUSION_CHANGE_LEADER -> FusionChangeLeader.getReader();
+            case FUSION_INIT -> FusionInit.getReader();
+            case FUSION_INIT_FORWARD -> FusionInitFwd.getReader();
+            case FUSION_INIT_OK -> FusionInitOk.getReader();
+            case FUSION_INIT_KO -> FusionInitKo.getReader();
+            case FUSION_REQUEST -> FusionReq.getReader();
+            case FUSION_REQUEST_RESPONSE -> FusionRsp.getReader();
+            case PUBLIC_MESSAGE -> MsgPbl.getReader();
+            case PRIVATE_MESSAGE -> MsgPrv.getReader();
         };
     }
 
@@ -40,9 +59,8 @@ public class PacketReader implements Reader<Packet> {
             if (status != ProcessStatus.DONE) {
                 return status;
             }
-            updateReader();
             state = State.WAITING_DATA;
-
+            updateReader();
         }
         if (state == State.WAITING_DATA) {
             var status = reader.process(buffer);
