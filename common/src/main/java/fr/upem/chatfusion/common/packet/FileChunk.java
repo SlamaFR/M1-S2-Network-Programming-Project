@@ -15,6 +15,7 @@ public record FileChunk(int serverId, String username, String filename, int chun
     public FileChunk {
         Objects.requireNonNull(username);
         Objects.requireNonNull(filename);
+        Objects.requireNonNull(chunk);
     }
 
     @Override
@@ -35,6 +36,7 @@ public record FileChunk(int serverId, String username, String filename, int chun
 
     @Override
     public void accept(PacketVisitor visitor) {
+        Objects.requireNonNull(visitor);
         visitor.visit(this);
     }
 

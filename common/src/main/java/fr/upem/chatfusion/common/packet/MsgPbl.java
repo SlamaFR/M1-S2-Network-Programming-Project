@@ -32,6 +32,7 @@ public record MsgPbl(int serverId, String nickname, String message) implements P
 
     @Override
     public void accept(PacketVisitor visitor) {
+        Objects.requireNonNull(visitor);
         visitor.visit(this);
     }
 

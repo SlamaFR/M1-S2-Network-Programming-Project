@@ -17,6 +17,7 @@ import fr.upem.chatfusion.common.packet.MsgPrv;
 import fr.upem.chatfusion.common.packet.Packet;
 
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class PacketReader implements Reader<Packet> {
 
@@ -51,6 +52,7 @@ public class PacketReader implements Reader<Packet> {
 
     @Override
     public ProcessStatus process(ByteBuffer buffer) {
+        Objects.requireNonNull(buffer);
         if (state == State.DONE || state == State.ERROR) {
             throw new IllegalStateException();
         }

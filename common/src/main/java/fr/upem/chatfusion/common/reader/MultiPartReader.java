@@ -53,30 +53,39 @@ public class MultiPartReader<T> implements Reader<T> {
     }
 
     public static <T> PartReader<T> part(Reader<T> reader, Consumer<T> consumer) {
+        Objects.requireNonNull(reader);
+        Objects.requireNonNull(consumer);
         return new PartReader<>(reader, consumer);
     }
 
     public static PartReader<Byte> getByte(Consumer<Byte> consumer) {
+        Objects.requireNonNull(consumer);
         return part(new ByteReader(), consumer);
     }
 
     public static PartReader<Integer> getInt(Consumer<Integer> consumer) {
+        Objects.requireNonNull(consumer);
         return part(new IntReader(), consumer);
     }
 
     public static PartReader<String> getString(Consumer<String> consumer) {
+        Objects.requireNonNull(consumer);
         return part(new StringReader(), consumer);
     }
 
     public static PartReader<byte[]> getBytes(Consumer<byte[]> consumer) {
+        Objects.requireNonNull(consumer);
         return part(new BytesArrayReader(), consumer);
     }
 
     public static <E> PartReader<List<E>> getList(Reader<E> reader, Consumer<List<E>> consumer) {
+        Objects.requireNonNull(reader);
+        Objects.requireNonNull(consumer);
         return part(new ListReader<>(reader), consumer);
     }
 
     public static PartReader<List<Integer>> getIntegerList(Consumer<List<Integer>> consumer) {
+        Objects.requireNonNull(consumer);
         return getList(new IntReader(), consumer);
     }
 
@@ -98,6 +107,7 @@ public class MultiPartReader<T> implements Reader<T> {
 
         @Override
         public ProcessStatus process(ByteBuffer buffer) {
+            Objects.requireNonNull(buffer);
             if (state == State.DONE) {
                 return ProcessStatus.DONE;
             }

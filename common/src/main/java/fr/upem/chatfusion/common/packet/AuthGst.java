@@ -29,6 +29,7 @@ public record AuthGst(String username) implements Packet {
 
     @Override
     public void accept(PacketVisitor visitor) {
+        Objects.requireNonNull(visitor);
         visitor.visit(this);
     }
 

@@ -3,6 +3,7 @@ package fr.upem.chatfusion.common.reader;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class ListReader<E> implements Reader<List<E>> {
 
@@ -23,6 +24,7 @@ public class ListReader<E> implements Reader<List<E>> {
 
     @Override
     public ProcessStatus process(ByteBuffer buffer) {
+        Objects.requireNonNull(buffer);
         if (state == State.DONE || state == State.ERROR) {
             throw new IllegalStateException();
         }

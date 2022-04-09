@@ -5,6 +5,7 @@ import fr.upem.chatfusion.common.reader.Reader;
 
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Objects;
 
 public record FusionInitKo() implements Packet {
 
@@ -18,6 +19,7 @@ public record FusionInitKo() implements Packet {
 
     @Override
     public void accept(PacketVisitor visitor) {
+        Objects.requireNonNull(visitor);
         visitor.visit(this);
     }
 

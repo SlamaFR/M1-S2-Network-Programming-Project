@@ -7,7 +7,7 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.StringJoiner;
 
-public class Helpers {
+public final class Helpers {
 	/***
 	 * Theses methods are here to help understanding the behavior of the selector
 	 ***/

@@ -7,6 +7,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayDeque;
+import java.util.Objects;
 import java.util.logging.Logger;
 
 public abstract class AbstractContext implements Context {
@@ -23,6 +24,7 @@ public abstract class AbstractContext implements Context {
     protected boolean closed = false;
 
     public AbstractContext(SelectionKey key) {
+        Objects.requireNonNull(key);
         this.key = key;
         this.channel = (SocketChannel) key.channel();
         this.bufferIn = ByteBuffer.allocate(BUFFER_SIZE);

@@ -28,6 +28,7 @@ public record FusionAckLeader(String username) implements Packet {
 
     @Override
     public void accept(PacketVisitor visitor) {
+        Objects.requireNonNull(visitor);
         visitor.visit(this);
     }
 

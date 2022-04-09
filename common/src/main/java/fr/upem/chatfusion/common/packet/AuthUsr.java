@@ -32,6 +32,7 @@ public record AuthUsr(String username, String password) implements Packet {
 
     @Override
     public void accept(PacketVisitor visitor) {
+        Objects.requireNonNull(visitor);
         visitor.visit(this);
     }
 

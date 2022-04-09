@@ -9,8 +9,14 @@ import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Objects;
 
 public record FusionInit(InetSocketAddress address, List<Integer> neighbors) implements Packet {
+
+    public FusionInit {
+        Objects.requireNonNull(address);
+        Objects.requireNonNull(neighbors);
+    }
 
     @Override
     public ByteBuffer toByteBuffer() {
@@ -30,6 +36,7 @@ public record FusionInit(InetSocketAddress address, List<Integer> neighbors) imp
 
     @Override
     public void accept(PacketVisitor visitor) {
+        Objects.requireNonNull(visitor);
         visitor.visit(this);
     }
 

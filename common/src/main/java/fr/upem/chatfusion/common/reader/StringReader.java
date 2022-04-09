@@ -4,6 +4,7 @@ import fr.upem.chatfusion.common.Buffers;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 
 public class StringReader implements Reader<String> {
 
@@ -19,6 +20,7 @@ public class StringReader implements Reader<String> {
     private String message;
 
     private ProcessStatus getMessageLength(ByteBuffer buffer) {
+        Objects.requireNonNull(buffer);
         var state = intReader.process(buffer);
         if (state != ProcessStatus.DONE) {
             return state;

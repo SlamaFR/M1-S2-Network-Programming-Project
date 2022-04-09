@@ -1,7 +1,7 @@
 package fr.upem.chatfusion.common;
 
-import java.nio.channels.Channel;
-import java.nio.channels.SelectionKey;
+import java.io.Closeable;
+import java.util.Objects;
 
 public final class Channels {
 
@@ -9,16 +9,12 @@ public final class Channels {
         throw new AssertionError("No instances for you!");
     }
 
-    public static void silentlyClose(Channel channel) {
+    public static void silentlyClose(Closeable closeable) {
         try {
-            channel.close();
+            Objects.requireNonNull(closeable).close();
         } catch (Exception e) {
             // Ignore
         }
-    }
-
-    public static void silentlyClose(SelectionKey key) {
-        silentlyClose(key.channel());
     }
 
 }

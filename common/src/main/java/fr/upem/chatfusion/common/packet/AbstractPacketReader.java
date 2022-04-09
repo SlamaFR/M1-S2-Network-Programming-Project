@@ -4,6 +4,7 @@ import fr.upem.chatfusion.common.reader.MultiPartReader;
 import fr.upem.chatfusion.common.reader.Reader;
 
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 abstract class AbstractPacketReader<T extends Packet> implements Reader<T> {
 
@@ -11,6 +12,7 @@ abstract class AbstractPacketReader<T extends Packet> implements Reader<T> {
 
     @Override
     public ProcessStatus process(ByteBuffer buffer) {
+        Objects.requireNonNull(buffer);
         return reader().process(buffer);
     }
 

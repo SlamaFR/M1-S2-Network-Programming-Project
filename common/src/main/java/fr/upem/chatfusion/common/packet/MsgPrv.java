@@ -36,6 +36,7 @@ public record MsgPrv(int srcServerId, String srcNickname, int dstServerId, Strin
 
     @Override
     public void accept(PacketVisitor visitor) {
+        Objects.requireNonNull(visitor);
         visitor.visit(this);
     }
 

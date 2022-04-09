@@ -9,6 +9,7 @@ import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Objects;
 
 public record FusionRsp(byte status) implements Packet {
 
@@ -23,6 +24,7 @@ public record FusionRsp(byte status) implements Packet {
 
     @Override
     public void accept(PacketVisitor visitor) {
+        Objects.requireNonNull(visitor);
         visitor.visit(this);
     }
 

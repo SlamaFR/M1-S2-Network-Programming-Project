@@ -4,6 +4,7 @@ import fr.upem.chatfusion.common.Buffers;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.Objects;
 
 public class BytesArrayReader implements Reader<byte[]> {
 
@@ -18,6 +19,7 @@ public class BytesArrayReader implements Reader<byte[]> {
 
     @Override
     public ProcessStatus process(ByteBuffer buffer) {
+        Objects.requireNonNull(buffer);
         if (state == State.DONE || state == State.ERROR) {
             throw new IllegalStateException();
         }
