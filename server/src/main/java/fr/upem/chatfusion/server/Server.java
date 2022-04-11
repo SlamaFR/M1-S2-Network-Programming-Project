@@ -2,7 +2,12 @@ package fr.upem.chatfusion.server;
 
 import fr.upem.chatfusion.common.Channels;
 import fr.upem.chatfusion.common.Helpers;
+import fr.upem.chatfusion.common.context.Context;
+import fr.upem.chatfusion.common.packet.AuthRsp;
+import fr.upem.chatfusion.common.packet.MsgPbl;
+import fr.upem.chatfusion.common.packet.MsgPrv;
 import fr.upem.chatfusion.common.packet.Packet;
+import fr.upem.chatfusion.server.packet.ClientVisitor;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -11,38 +16,33 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.Objects;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class Server {
 
-    private static final Logger logger = Logger.getLogger("ChatFusion-Server");
-
-    private final int id;
+    private static final Logger logger = Logger.getLogger(Server.class.getName());
 
     private final ServerSocketChannel serverSocketChannel;
     private final Selector selector;
-    private final BlockingQueue<String> commandQueue;
+    private final BlockingQueue<Runnable> commandQueue;
     private final Thread console;
-    private final HashSet<ServerContext> siblings;
-    private final HashMap<String, ClientContext> clients;
+    private final HashMap<String, PeerContext> clients;
+    private final int id;
+    // private final HashSet<ServerContext> siblings;
 
-    private ServerContext leader = null;
-    private boolean fusionLock = false;
 
     public Server(int port, int id) throws IOException {
-        this.id = id;
         this.serverSocketChannel = ServerSocketChannel.open();
         this.serverSocketChannel.bind(new InetSocketAddress(port));
         this.selector = Selector.open();
-        this.commandQueue = new LinkedBlockingQueue<>();
+        this.commandQueue = new ArrayBlockingQueue<>(10);
         this.console = new Thread(new Console(this));
         this.console.setDaemon(true);
-        this.siblings = new HashSet<>();
         this.clients = new HashMap<>();
+        this.id = id;
     }
 
     public void launch() throws IOException {
@@ -52,7 +52,7 @@ public class Server {
         System.out.println("Server ID#" + id + " started");
         while (!Thread.interrupted() && serverSocketChannel.isOpen()) {
             try {
-                Helpers.printKeys(selector);
+                //Helpers.printKeys(selector);
                 selector.select(this::treatKey);
                 processCommands();
             } catch (UncheckedIOException tunneled) {
@@ -67,49 +67,18 @@ public class Server {
             if (key.isValid() && key.isAcceptable()) {
                 doAccept(key);
             }
-        } catch (IOException ioe) {
-            throw new UncheckedIOException(ioe);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
         }
         try {
-            if (key.isValid() && key.isWritable()) {
-                ((ClientContext) key.attachment()).doWrite();
-            }
             if (key.isValid() && key.isReadable()) {
-                ((ClientContext) key.attachment()).doRead();
+                ((Context) key.attachment()).doRead();
+            } else if (key.isValid() && key.isWritable()) {
+                ((Context) key.attachment()).doWrite();
             }
         } catch (IOException e) {
-            logger.log(Level.INFO, "Connection closed with client", e);
-            Channels.silentlyClose(key);
-        }
-    }
-
-    /**
-     * Sends instructions to the selector via a BlockingQueue and wakes it up.
-     */
-    public void sendCommand(String cmd) throws InterruptedException {
-        commandQueue.put(cmd);
-        if (!commandQueue.isEmpty()) {
-            selector.wakeup();
-        }
-    }
-
-    private void processCommands() {
-        while (!commandQueue.isEmpty()) {
-            var cmd = commandQueue.poll();
-            if ("STOP".equalsIgnoreCase(cmd)) {
-                logger.info("Stopping server...");
-                Channels.silentlyClose(serverSocketChannel);
-            } else if (cmd.toUpperCase().startsWith("FUSION")) {
-                var split = cmd.split(" ");
-                if (split.length != 3) {
-                    System.out.println("Invalid syntax");
-                    System.out.println("> FUSION <IP> <Port>");
-                    continue;
-                }
-                var socket = new InetSocketAddress(split[1], Integer.parseInt(split[2]));
-                System.out.println("Fusion with " + socket + "...");
-                // TODO
-            }
+            logger.info("Connection closed");
+            Channels.silentlyClose(key.channel());
         }
     }
 
@@ -122,32 +91,48 @@ public class Server {
         }
         sc.configureBlocking(false);
         var k = sc.register(selector, SelectionKey.OP_READ);
-        k.attach(new ClientContext(this, k));
+        k.attach(new PeerContext(this, k));
     }
 
-    public boolean authenticateGuest(ClientContext client) {
-        var e = clients.putIfAbsent(client.getNickname(), client) == null;
-        return e;
+    private void processCommands() {
+        // ouep
     }
 
-    public void disconnect(ClientContext client) {
-        clients.remove(client.getNickname());
-    }
-
-    public void dispatchPacket(Packet packet) {
-        for (var client : clients.values()) {
-            client.enqueuePacket(packet);
+    public void authenticateGuest(String name, SelectionKey key) {
+        Objects.requireNonNull(name);
+        Objects.requireNonNull(key);
+        var context = (PeerContext) key.attachment();
+        if (clients.putIfAbsent(name, context) == null) {
+            context.enqueuePacket(new AuthRsp(AuthRsp.OK, id));
+            context.setVisitor(new ClientVisitor(this));
+            context.setNickname(name);
+            System.out.println("Guest " + name + " connected");
         }
     }
 
-    public void sendPacket(Packet packet, String nickname) {
+    public void disconnect(String nickname) {
+        Objects.requireNonNull(nickname);
         if (clients.containsKey(nickname)) {
-            clients.get(nickname).enqueuePacket(packet);
+            clients.remove(nickname);
+            System.out.println("Client " + nickname + " disconnected");
         }
     }
 
-    public boolean isLeader() {
-        return leader == null;
+    public void dispatchPublicMessage(MsgPbl packet) {
+        Objects.requireNonNull(packet);
+        for (var context : clients.values()) {
+            context.enqueuePacket(packet);
+        }
     }
 
+    public void dispatchPrivateMessage(MsgPrv packet) {
+        if (packet.dstServerId() == id) {
+            var context = clients.get(packet.dstNickname());
+            if (context != null) {
+                context.enqueuePacket(packet);
+            }
+        } else {
+            System.out.println("FOR ANOTHER SERVER");
+        }
+    }
 }

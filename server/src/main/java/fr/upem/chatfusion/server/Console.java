@@ -1,10 +1,6 @@
 package fr.upem.chatfusion.server;
 
-import java.util.logging.Logger;
-
 public class Console implements Runnable {
-
-    private static final Logger LOGGER = Logger.getLogger(Console.class.getName());
 
     private final Server server;
 
@@ -15,12 +11,26 @@ public class Console implements Runnable {
     @Override
     public void run() {
         try (var scanner = new java.util.Scanner(System.in)) {
-            while (scanner.hasNextLine() && !Thread.interrupted()) {
-                var command = scanner.nextLine();
-                server.sendCommand(command);
+            while (scanner.hasNextLine()) {
+                var line = scanner.nextLine();
+                if (!line.isEmpty()) {
+                    processLine(line);
+                }
             }
-        } catch (InterruptedException e) {
-            LOGGER.info("Console interrupted");
+        }
+    }
+
+    private void processLine(String line) {
+        switch (line.toUpperCase()) {
+            case "INFO" -> {
+                System.out.println(">> Server info");
+            }
+            case "SHUTDOWN" -> {
+                System.out.println(">> Server shutdown");
+            }
+            case "SHUTDOWNNOW" -> {
+                System.out.println(">> Server shutdown now");
+            }
         }
     }
 }
