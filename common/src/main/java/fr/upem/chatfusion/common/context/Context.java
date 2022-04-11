@@ -1,5 +1,7 @@
 package fr.upem.chatfusion.common.context;
 
+import fr.upem.chatfusion.common.packet.Packet;
+
 import java.io.Closeable;
 import java.io.IOException;
 
@@ -37,6 +39,11 @@ public interface Context extends Closeable {
      * of the buffers.
      */
     void updateInterestOps();
+
+    /**
+     * Queues a packet to be sent.
+     */
+    void enqueuePacket(Packet packet);
 
     void processIn();
 

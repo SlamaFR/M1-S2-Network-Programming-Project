@@ -1,6 +1,7 @@
 package fr.upem.chatfusion.common.context;
 
 import fr.upem.chatfusion.common.Channels;
+import fr.upem.chatfusion.common.packet.Packet;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -21,15 +22,17 @@ public abstract class AbstractContext implements Context {
     protected final ByteBuffer bufferOut;
     protected final ArrayDeque<ByteBuffer> queue;
 
+    private boolean connected;
     protected boolean closed = false;
 
-    public AbstractContext(SelectionKey key) {
+    public AbstractContext(SelectionKey key, boolean connected) {
         Objects.requireNonNull(key);
         this.key = key;
         this.channel = (SocketChannel) key.channel();
         this.bufferIn = ByteBuffer.allocate(BUFFER_SIZE);
         this.bufferOut = ByteBuffer.allocate(BUFFER_SIZE);
         this.queue = new ArrayDeque<>();
+        this.connected = connected;
     }
 
     @Override
@@ -67,11 +70,23 @@ public abstract class AbstractContext implements Context {
         if (!channel.finishConnect()) {
             return;
         }
+        connected = true;
+        updateInterestOps();
+    }
+
+    @Override
+    public void enqueuePacket(Packet packet) {
+        Objects.requireNonNull(packet);
+        queue.add(packet.toByteBuffer().flip());
+        processOut();
         updateInterestOps();
     }
 
     @Override
     public void updateInterestOps() {
+        if (!connected) {
+            return;
+        }
         var interestOps = 0;
         if (!closed && bufferIn.hasRemaining()) {
             interestOps |= SelectionKey.OP_READ;
