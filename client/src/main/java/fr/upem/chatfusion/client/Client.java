@@ -1,151 +1,122 @@
 package fr.upem.chatfusion.client;
 
+import fr.upem.chatfusion.common.Channels;
 import fr.upem.chatfusion.common.Helpers;
-
-import fr.upem.chatfusion.common.Helpers;
-import fr.upem.chatfusion.common.frame.PrivateMessageFrame;
-import fr.upem.chatfusion.common.packet.OutgoingPrivateMessage;
-import fr.upem.chatfusion.common.packet.OutgoingPublicMessage;
+import fr.upem.chatfusion.common.packet.AuthGst;
+import fr.upem.chatfusion.common.packet.MsgPbl;
+import fr.upem.chatfusion.common.packet.MsgPrv;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
+import java.nio.channels.ClosedSelectorException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.Objects;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.logging.Logger;
 
 public class Client {
 
-    private static final Logger LOGGER = Logger.getLogger("FusionChat-Client");
+    private static final Logger logger = Logger.getLogger("ChatFusion-Client");
 
+    private final InetSocketAddress serverAddress;
     private final SocketChannel channel;
     private final Selector selector;
-    private final InetSocketAddress serverAddress;
     private final String nickname;
-    private final BlockingQueue<String> commandQueue;
-    private final Thread console;
     private final Path basePath;
+    private final Thread console;
+    private final ArrayBlockingQueue<Runnable> commands;
 
-    private ServerContext context;
+    private ServerContext uniqueContext;
+    private int serverId;
 
-
-    public Client(String nickname, InetSocketAddress inetSocketAddress, Path path) throws IOException {
-        this.serverAddress = inetSocketAddress;
-        this.nickname = nickname;
+    public Client(InetSocketAddress serverAddress, String nickname, Path basePath) throws IOException {
+        this.serverAddress = serverAddress;
         this.channel = SocketChannel.open();
         this.selector = Selector.open();
-        this.commandQueue = new LinkedBlockingQueue<>();
+        this.nickname = nickname;
+        this.basePath = basePath;
         this.console = new Thread(new Console(this));
-        this.console.setDaemon(true);
-        this.basePath = path;
+        this.commands = new ArrayBlockingQueue<>(10);
     }
 
     public void launch() throws IOException {
-        this.channel.configureBlocking(false);
-        var key = this.channel.register(selector, SelectionKey.OP_CONNECT);
-        this.context = new ServerContext(this, key);
-        key.attach(context);
-        this.channel.connect(serverAddress);
+        channel.configureBlocking(false);
+        var key = channel.register(selector, SelectionKey.OP_CONNECT);
+        uniqueContext = new ServerContext(this, key);
+        channel.connect(serverAddress);
 
-        console.start();
+        console.setDaemon(true);
+        // Sending authentication packet
+        uniqueContext.enqueuePacket(new AuthGst(nickname));
 
         while (!Thread.interrupted()) {
             try {
-                Helpers.printKeys(selector);
-                selector.select(k -> {
-                    try {
-                        treatKey(k);
-                    } catch (InterruptedException e) {
-                        LOGGER.info("Interrupted while treating key");
-                    }
-                });
+                //Helpers.printKeys(selector);
+                selector.select(this::treatKey);
                 processCommands();
             } catch (UncheckedIOException tunneled) {
                 throw tunneled.getCause();
+            } catch (InterruptedException e) {
+                logger.info("Client interrupted");
+            } catch (ClosedSelectorException e) {
+                logger.info("Client closed");
+                break;
             }
         }
         console.interrupt();
     }
 
-    private void treatKey(SelectionKey key) throws InterruptedException {
+    private void treatKey(SelectionKey key) {
         try {
             if (key.isValid() && key.isConnectable()) {
-                this.context.doConnect();
-            }
-            if (key.isValid() && key.isWritable()) {
-                this.context.doWrite();
+                uniqueContext.doConnect();
             }
             if (key.isValid() && key.isReadable()) {
-                this.context.doRead();
+                uniqueContext.doRead();
             }
-        } catch (IOException ioe) {
-            throw new UncheckedIOException(ioe);
+            if (key.isValid() && key.isWritable()) {
+                uniqueContext.doWrite();
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
         }
     }
 
-    public void sendCommand(String cmd) throws InterruptedException {
-        commandQueue.put(cmd);
-        if (!commandQueue.isEmpty()) {
+    private void enqueueCommand(Runnable command) throws InterruptedException {
+        commands.put(command);
+        if (!commands.isEmpty()) {
             selector.wakeup();
         }
     }
 
-    private void processCommands() {
-        while (!commandQueue.isEmpty()) {
-            String cmd = commandQueue.poll();
-            if (cmd.startsWith("@")) {
-                cmd = cmd.substring(1);
-                var split = cmd.split(" ");
-                if (split.length < 2) {
-                    System.out.println("Usage: @<Nickname>:<Server ID> <Message>");
-                    continue;
-                }
-                var expeditionData = split[0].split(":");
-                var recipient = expeditionData[0];
-                var serverId = Integer.parseInt(expeditionData[1]);
-                var message = String.join(" ", Arrays.copyOfRange(split, 1, split.length));
-                var packet = new OutgoingPrivateMessage(serverId, recipient, message);
-                context.enqueue(packet);
-            } else if (cmd.startsWith("/")) {
-                cmd = cmd.substring(1);
-                var split = cmd.split(" ");
-                if (split.length < 2) {
-                    System.out.println("Usage: @<Nickname>:<Server ID> <Message>");
-                    continue;
-                }
-                var expeditionData = split[0].split(":");
-                var recipient = expeditionData[0];
-                var serverId = Integer.parseInt(expeditionData[1]);
-                var filepath = String.join(" ", Arrays.copyOfRange(split, 1, split.length));
-                try {
-                    new FileSender(context, serverId, recipient, Path.of(basePath + "/" + filepath)).sendAsync();
-                } catch (IOException e) {
-                    System.out.println("chelou");
-                    System.out.println(e.getMessage());
-                }
-
-            } else {
-                // Public message
-                var packet = new OutgoingPublicMessage(cmd);
-                context.enqueue(packet);
-            }
+    private void processCommands() throws InterruptedException {
+        while (!commands.isEmpty()) {
+            commands.take().run();
         }
     }
 
-    public String getNickname() {
-        return nickname;
+    public void sendPublicMessage(String message) throws InterruptedException {
+        Objects.requireNonNull(message);
+        enqueueCommand(() -> uniqueContext.enqueuePacket(new MsgPbl(this.serverId, this.nickname, message)));
     }
 
-    public void wakeup() {
-        selector.wakeup();
+    public void sendPrivateMessage(int serverId, String nickname, String message) throws InterruptedException {
+        Objects.requireNonNull(nickname);
+        Objects.requireNonNull(message);
+        enqueueCommand(() -> uniqueContext.enqueuePacket(new MsgPrv(this.serverId, this.nickname, serverId, nickname, message)));
     }
 
-    public Path getBasePath() {
-        return basePath;
+    public void shutdown() {
+        Channels.silentlyClose(selector);
+    }
+
+    public void confirmAuthentication(int serverId) {
+        this.serverId = serverId;
+        console.start();
+        System.out.println("Welcome to ChatFusion, " + nickname + "!");
     }
 }

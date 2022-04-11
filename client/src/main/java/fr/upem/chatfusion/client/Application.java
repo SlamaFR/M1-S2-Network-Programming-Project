@@ -11,7 +11,7 @@ public class Application {
             usage();
             return;
         }
-        new Client(args[0], new InetSocketAddress(args[2], Integer.parseInt(args[3])), Path.of(args[1])).launch();
+        new Client(new InetSocketAddress(args[2], Integer.parseInt(args[3])), args[0], Path.of(args[1])).launch();
     }
 
     private static void usage() {
