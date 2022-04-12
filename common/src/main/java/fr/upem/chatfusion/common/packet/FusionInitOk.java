@@ -11,7 +11,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
 
-public record FusionInitOk(InetSocketAddress address, List<Integer> neighbors) implements Packet {
+public record FusionInitOk(int serverId, InetSocketAddress address, List<Integer> neighbors) implements Packet {
 
     public FusionInitOk {
         Objects.requireNonNull(address);
@@ -22,12 +22,14 @@ public record FusionInitOk(InetSocketAddress address, List<Integer> neighbors) i
     public ByteBuffer toByteBuffer() {
         var addressBytes = address.getAddress().getAddress();
         var addressPort = address.getPort();
-        var buffer = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + addressBytes.length * Byte.BYTES + Integer.BYTES + Integer.BYTES + neighbors.size() * Integer.BYTES);
+        var buffer = ByteBuffer.allocate(Byte.BYTES + 2 * Integer.BYTES + addressBytes.length * Byte.BYTES + Integer.BYTES + Integer.BYTES + neighbors.size() * Integer.BYTES);
 
         buffer.put(OpCode.FUSION_INIT_OK.getCode());
+        buffer.putInt(serverId);
         buffer.putInt(addressBytes.length);
         buffer.put(addressBytes);
         buffer.putInt(addressPort);
+        buffer.putInt(neighbors.size());
         for (var neighbor : neighbors) {
             buffer.putInt(neighbor);
         }
@@ -43,17 +45,19 @@ public record FusionInitOk(InetSocketAddress address, List<Integer> neighbors) i
     public static Reader<FusionInitOk> getReader() {
         return new AbstractPacketReader<>() {
 
+            private int serverId;
             private byte[] bytes;
             private int port;
             private List<Integer> neighbors;
 
             private final MultiPartReader<FusionInitOk> reader = new MultiPartReader<>(List.of(
+                    MultiPartReader.getInt(i -> serverId = i),
                     MultiPartReader.getBytes(b -> bytes = b),
                     MultiPartReader.getInt(i -> port = i),
                     MultiPartReader.getIntegerList(i -> neighbors = i)
             ), () -> {
                 try {
-                    return new FusionInitOk(new InetSocketAddress(InetAddress.getByAddress(bytes), port), neighbors);
+                    return new FusionInitOk(serverId, new InetSocketAddress(InetAddress.getByAddress(bytes), port), neighbors);
                 } catch (UnknownHostException e) {
                     throw new UncheckedIOException(e);
                 }
