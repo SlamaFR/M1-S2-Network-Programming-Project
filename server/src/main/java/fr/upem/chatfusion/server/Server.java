@@ -1,12 +1,10 @@
 package fr.upem.chatfusion.server;
 
 import fr.upem.chatfusion.common.Channels;
-import fr.upem.chatfusion.common.Helpers;
 import fr.upem.chatfusion.common.context.Context;
 import fr.upem.chatfusion.common.packet.AuthRsp;
 import fr.upem.chatfusion.common.packet.MsgPbl;
 import fr.upem.chatfusion.common.packet.MsgPrv;
-import fr.upem.chatfusion.common.packet.Packet;
 import fr.upem.chatfusion.server.packet.ClientVisitor;
 
 import java.io.IOException;
@@ -104,7 +102,7 @@ public class Server {
         var context = (PeerContext) key.attachment();
         if (clients.putIfAbsent(name, context) == null) {
             context.enqueuePacket(new AuthRsp(AuthRsp.OK, id));
-            context.setVisitor(new ClientVisitor(this));
+            context.setVisitor(new ClientVisitor(this, context));
             context.setNickname(name);
             System.out.println("Guest " + name + " connected");
         }
@@ -126,6 +124,7 @@ public class Server {
     }
 
     public void dispatchPrivateMessage(MsgPrv packet) {
+        Objects.requireNonNull(packet);
         if (packet.dstServerId() == id) {
             var context = clients.get(packet.dstNickname());
             if (context != null) {
