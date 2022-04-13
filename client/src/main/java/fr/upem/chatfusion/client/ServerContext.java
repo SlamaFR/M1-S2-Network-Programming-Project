@@ -32,11 +32,10 @@ public class ServerContext extends AbstractContext {
     @Override
     public void processIn() {
         try {
-            while (bufferIn.hasRemaining()) {
+            while (bufferIn.position() > 0) {
                 var status = packetReader.process(bufferIn);
                 if (status != Reader.ProcessStatus.DONE) {
                     if (status == Reader.ProcessStatus.ERROR) {
-                        System.out.println("AN ERROR OCCURED IN SERVER CONTEXT WITH READER");
                         closed = true;
                     }
                     break;

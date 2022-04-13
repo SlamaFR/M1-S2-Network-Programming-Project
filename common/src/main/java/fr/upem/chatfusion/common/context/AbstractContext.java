@@ -37,10 +37,7 @@ public abstract class AbstractContext implements Context {
 
     @Override
     public void doRead() throws IOException {
-        System.out.println("REEEAD");
         var bytes = channel.read(bufferIn);
-        System.out.println("STOP READING");
-        System.out.println(bytes);
         if (bytes == 0) {
             logger.severe("Selector gave a bad hint");
             return;
@@ -62,7 +59,6 @@ public abstract class AbstractContext implements Context {
         System.out.println(bufferOut);
         var bytes = channel.write(bufferOut);
         bufferOut.compact();
-        System.out.println("bytes wrote " + bytes);
         if (bytes == 0) {
             logger.severe("Selector gave a bad hint");
         }

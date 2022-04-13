@@ -36,13 +36,11 @@ public class PeerContext extends AbstractContext {
 
     @Override
     public void processIn() {
-        System.out.println("ProcessIn");
         try {
-            while (bufferIn.hasRemaining()) {
+            while (bufferIn.position() > 0) {
                 var status = packetReader.process(bufferIn);
                 if (status != Reader.ProcessStatus.DONE) {
                     if (status == Reader.ProcessStatus.ERROR) {
-                        System.out.println("AN ERROR OOCCURED DURING");
                         closed = true;
                     }
                     break;
