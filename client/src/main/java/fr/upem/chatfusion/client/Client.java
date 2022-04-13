@@ -55,7 +55,7 @@ public class Client {
 
         while (!Thread.interrupted()) {
             try {
-                //Helpers.printKeys(selector);
+                Helpers.printKeys(selector);
                 selector.select(this::treatKey);
                 processCommands();
             } catch (UncheckedIOException tunneled) {
@@ -108,6 +108,19 @@ public class Client {
         Objects.requireNonNull(nickname);
         Objects.requireNonNull(message);
         enqueueCommand(() -> uniqueContext.enqueuePacket(new MsgPrv(this.serverId, this.nickname, serverId, nickname, message)));
+    }
+
+    public void sendFile(int serverId, String nickname, String filePath) throws InterruptedException {
+        Objects.requireNonNull(nickname);
+        Objects.requireNonNull(filePath);
+        enqueueCommand(() -> {
+            try {
+                new FileSender(uniqueContext, selector, serverId, this.nickname, nickname, Path.of(basePath + "/" + filePath)).send();
+            } catch (IOException e) {
+                System.err.println(e.getMessage());
+                return ;
+            }
+        });
     }
 
     public void shutdown() {

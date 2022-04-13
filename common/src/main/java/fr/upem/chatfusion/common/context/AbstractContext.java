@@ -4,9 +4,9 @@ import fr.upem.chatfusion.common.Channels;
 import fr.upem.chatfusion.common.packet.Packet;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.SocketChannel;
+import java.nio.channels.*;
 import java.util.ArrayDeque;
 import java.util.Objects;
 import java.util.logging.Logger;
@@ -29,15 +29,18 @@ public abstract class AbstractContext implements Context {
         Objects.requireNonNull(key);
         this.key = key;
         this.channel = (SocketChannel) key.channel();
-        this.bufferIn = ByteBuffer.allocate(BUFFER_SIZE);
-        this.bufferOut = ByteBuffer.allocate(BUFFER_SIZE);
+        this.bufferIn = ByteBuffer.allocateDirect(BUFFER_SIZE);
+        this.bufferOut = ByteBuffer.allocateDirect(BUFFER_SIZE);
         this.queue = new ArrayDeque<>();
         this.connected = connected;
     }
 
     @Override
     public void doRead() throws IOException {
+        System.out.println("REEEAD");
         var bytes = channel.read(bufferIn);
+        System.out.println("STOP READING");
+        System.out.println(bytes);
         if (bytes == 0) {
             logger.severe("Selector gave a bad hint");
             return;
@@ -56,8 +59,10 @@ public abstract class AbstractContext implements Context {
             close();
             return;
         }
+        System.out.println(bufferOut);
         var bytes = channel.write(bufferOut);
         bufferOut.compact();
+        System.out.println("bytes wrote " + bytes);
         if (bytes == 0) {
             logger.severe("Selector gave a bad hint");
         }

@@ -2,12 +2,17 @@ package fr.upem.chatfusion.server;
 
 import fr.upem.chatfusion.common.Buffers;
 import fr.upem.chatfusion.common.context.AbstractContext;
+import fr.upem.chatfusion.common.packet.FileChunk;
 import fr.upem.chatfusion.common.packet.PacketVisitor;
 import fr.upem.chatfusion.common.reader.PacketReader;
 import fr.upem.chatfusion.common.reader.Reader;
 import fr.upem.chatfusion.server.packet.DefaultVisitor;
 
+import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
+import java.util.ArrayDeque;
+import java.util.Objects;
+import java.util.Queue;
 import java.util.logging.Logger;
 
 public class PeerContext extends AbstractContext {
@@ -16,6 +21,7 @@ public class PeerContext extends AbstractContext {
 
     private final Server server;
     private final PacketReader packetReader;
+    private final Queue<ByteBuffer> fileQueue;
 
     private PacketVisitor visitor;
     private String nickname;
@@ -25,15 +31,18 @@ public class PeerContext extends AbstractContext {
         this.server = server;
         this.packetReader = new PacketReader();
         this.visitor = new DefaultVisitor(server, key);
+        this.fileQueue = new ArrayDeque<>();
     }
 
     @Override
     public void processIn() {
+        System.out.println("ProcessIn");
         try {
             while (bufferIn.hasRemaining()) {
                 var status = packetReader.process(bufferIn);
                 if (status != Reader.ProcessStatus.DONE) {
                     if (status == Reader.ProcessStatus.ERROR) {
+                        System.out.println("AN ERROR OOCCURED DURING");
                         closed = true;
                     }
                     break;
@@ -42,24 +51,32 @@ public class PeerContext extends AbstractContext {
                 packetReader.reset();
             }
         } catch (IllegalArgumentException e) {
-            logger.severe("Unknown packet code");
+            System.out.println("Unknown packet code");
             closed = true;
         } catch (UnsupportedOperationException e) {
-            logger.severe("Received unsupported packet in this context");
+            System.out.println("Received unsupported packet in this context");
             closed = true;
         }
     }
 
     @Override
     public void processOut() {
-        while(bufferOut.hasRemaining() && !queue.isEmpty()) {
-            var buffer = queue.peek();
-            if (!buffer.hasRemaining()) {
-                queue.poll();
-                return;
-            }
-            Buffers.tryPut(bufferOut, buffer);
+        while(bufferOut.hasRemaining() && (!queue.isEmpty() || !fileQueue.isEmpty())) {
+            processQueue(queue);
+            processQueue(fileQueue);
         }
+    }
+
+    private void processQueue(Queue<ByteBuffer> queue) {
+        if (queue.isEmpty()) {
+            return;
+        }
+        var buffer = queue.peek();
+        if (!buffer.hasRemaining()) {
+            queue.poll();
+            return;
+        }
+        Buffers.tryPut(bufferOut, buffer);
     }
 
     public void setVisitor(PacketVisitor visitor) {
@@ -70,6 +87,13 @@ public class PeerContext extends AbstractContext {
         this.nickname = nickname;
     }
 
+    public void enqueueFileChunk(FileChunk fileChunk) {
+        Objects.requireNonNull(fileChunk);
+        fileQueue.add(fileChunk.toByteBuffer().flip());
+        processOut();
+        updateInterestOps();
+    }
+
     @Override
     public void close() {
         super.close();
@@ -77,4 +101,6 @@ public class PeerContext extends AbstractContext {
             server.disconnect(nickname);
         }
     }
+
+
 }

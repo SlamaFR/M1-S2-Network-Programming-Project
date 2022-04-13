@@ -26,6 +26,6 @@ public class ClientVisitor implements PacketVisitor {
 
     @Override
     public void visit(FileChunk packet) {
-        PacketVisitor.super.visit(packet);
+        server.dispatchFileChunk(packet);
     }
 }

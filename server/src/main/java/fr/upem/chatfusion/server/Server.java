@@ -3,10 +3,7 @@ package fr.upem.chatfusion.server;
 import fr.upem.chatfusion.common.Channels;
 import fr.upem.chatfusion.common.Helpers;
 import fr.upem.chatfusion.common.context.Context;
-import fr.upem.chatfusion.common.packet.AuthRsp;
-import fr.upem.chatfusion.common.packet.MsgPbl;
-import fr.upem.chatfusion.common.packet.MsgPrv;
-import fr.upem.chatfusion.common.packet.Packet;
+import fr.upem.chatfusion.common.packet.*;
 import fr.upem.chatfusion.server.packet.ClientVisitor;
 
 import java.io.IOException;
@@ -52,7 +49,7 @@ public class Server {
         System.out.println("Server ID#" + id + " started");
         while (!Thread.interrupted() && serverSocketChannel.isOpen()) {
             try {
-                //Helpers.printKeys(selector);
+                Helpers.printKeys(selector);
                 selector.select(this::treatKey);
                 processCommands();
             } catch (UncheckedIOException tunneled) {
@@ -130,6 +127,17 @@ public class Server {
             var context = clients.get(packet.dstNickname());
             if (context != null) {
                 context.enqueuePacket(packet);
+            }
+        } else {
+            System.out.println("FOR ANOTHER SERVER");
+        }
+    }
+
+    public void dispatchFileChunk(FileChunk packet) {
+        if (packet.serverId() == id) {
+            var context = clients.get(packet.dstNickname());
+            if (context != null) {
+                context.enqueueFileChunk(packet);
             }
         } else {
             System.out.println("FOR ANOTHER SERVER");

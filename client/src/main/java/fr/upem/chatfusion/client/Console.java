@@ -42,9 +42,18 @@ public class Console implements Runnable {
                 System.out.println("Usage: @<nickname>:<serverId> <message>");
             }
         } else if (line.startsWith("/")) {
-            // Todo file
+            try {
+                var args = line.substring(1).split(" ", 2);
+                var prefix = args[0].split(":");
+                var nickname = prefix[0];
+                var serverId = Integer.parseInt(prefix[1]);
+                client.sendFile(serverId, nickname, args[1]);
+            } catch (NumberFormatException e) {
+                System.out.println("Usage: /<nickname>:<serverId> <file path>");
+            }
         } else {
             client.sendPublicMessage(line);
         }
+
     }
 }

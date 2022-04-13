@@ -1,15 +1,13 @@
 package fr.upem.chatfusion.client;
 
-import fr.upem.chatfusion.common.packet.AuthRsp;
-import fr.upem.chatfusion.common.packet.MsgPbl;
-import fr.upem.chatfusion.common.packet.MsgPrv;
-import fr.upem.chatfusion.common.packet.PacketVisitor;
+import fr.upem.chatfusion.common.packet.*;
 
 import java.util.Objects;
 
 public class ServerVisitor implements PacketVisitor {
 
     private final Client client;
+    private int numberOfChunksToReceive = 0;
 
     public ServerVisitor(Client client) {
         Objects.requireNonNull(client);
@@ -45,5 +43,13 @@ public class ServerVisitor implements PacketVisitor {
     public void visit(MsgPrv packet) {
         Objects.requireNonNull(packet);
         System.out.printf("[%d] %s to you: %s\n", packet.srcServerId(), packet.srcNickname(), packet.message());
+    }
+
+    public void visit(FileChunk packet) {
+        numberOfChunksToReceive++;
+        if (numberOfChunksToReceive == packet.chunkNumber()) {
+            numberOfChunksToReceive = 0;
+            System.out.printf("[%d] %s received from %s\n", packet.serverId(), packet.filename(), packet.srcNickname());
+        }
     }
 }

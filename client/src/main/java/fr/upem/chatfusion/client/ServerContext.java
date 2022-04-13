@@ -36,6 +36,7 @@ public class ServerContext extends AbstractContext {
                 var status = packetReader.process(bufferIn);
                 if (status != Reader.ProcessStatus.DONE) {
                     if (status == Reader.ProcessStatus.ERROR) {
+                        System.out.println("AN ERROR OCCURED IN SERVER CONTEXT WITH READER");
                         closed = true;
                     }
                     break;
@@ -59,7 +60,9 @@ public class ServerContext extends AbstractContext {
 
     public void enqueueFileChunk(FileChunk fileChunk) {
         Objects.requireNonNull(fileChunk);
-        fileQueue.add(fileChunk.toByteBuffer());
+        fileQueue.add(fileChunk.toByteBuffer().flip());
+        processOut();
+        updateInterestOps();
     }
 
     private void processQueue(Queue<ByteBuffer> queue) {
