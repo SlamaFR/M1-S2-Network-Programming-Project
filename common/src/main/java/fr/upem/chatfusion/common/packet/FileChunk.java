@@ -33,7 +33,7 @@ public record FileChunk(int serverId, String srcNickname, String dstNickname, St
         Buffers.putEncodedString(buffer, filenameBytes);
         buffer.putInt(chunkNumber);
         buffer.putInt(chunkSize);
-        buffer.put(chunk);
+        buffer.put(ByteBuffer.wrap(chunk));
         return buffer;
     }
 

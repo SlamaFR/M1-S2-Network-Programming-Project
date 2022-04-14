@@ -47,6 +47,7 @@ public class ServerVisitor implements PacketVisitor {
 
     public void visit(FileChunk packet) {
         numberOfChunksToReceive++;
+        System.out.println("receive chunks : "+ numberOfChunksToReceive + " / " + packet.chunkNumber());
         if (numberOfChunksToReceive == packet.chunkNumber()) {
             numberOfChunksToReceive = 0;
             System.out.printf("[%d] %s received from %s\n", packet.serverId(), packet.filename(), packet.srcNickname());

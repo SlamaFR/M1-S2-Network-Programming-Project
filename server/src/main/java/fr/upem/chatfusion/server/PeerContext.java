@@ -37,7 +37,7 @@ public class PeerContext extends AbstractContext {
     @Override
     public void processIn() {
         try {
-            while (bufferIn.position() > 0) {
+            while (bufferIn.position() >= 0) {
                 var status = packetReader.process(bufferIn);
                 if (status != Reader.ProcessStatus.DONE) {
                     if (status == Reader.ProcessStatus.ERROR) {
@@ -70,8 +70,10 @@ public class PeerContext extends AbstractContext {
             return;
         }
         var buffer = queue.peek();
+        System.out.println("in server processQueue : " + buffer + " | bufferOut " + bufferOut + " | " + queue);
         if (!buffer.hasRemaining()) {
             queue.poll();
+            System.out.println("polled : " + queue.size());
             return;
         }
         Buffers.tryPut(bufferOut, buffer);

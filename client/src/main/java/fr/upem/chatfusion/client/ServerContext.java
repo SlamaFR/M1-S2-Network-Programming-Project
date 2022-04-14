@@ -32,7 +32,7 @@ public class ServerContext extends AbstractContext {
     @Override
     public void processIn() {
         try {
-            while (bufferIn.position() > 0) {
+            while (bufferIn.position() >= 0) {
                 var status = packetReader.process(bufferIn);
                 if (status != Reader.ProcessStatus.DONE) {
                     if (status == Reader.ProcessStatus.ERROR) {
@@ -69,8 +69,10 @@ public class ServerContext extends AbstractContext {
             return;
         }
         var buffer = queue.peek();
+        System.out.println("in client processQueue : " + buffer + " | bufferOut " + bufferOut + " | queue : " + queue.size());
         if (!buffer.hasRemaining()) {
             queue.poll();
+            System.out.println("polled : " + queue.size());
             return;
         }
         Buffers.tryPut(bufferOut, buffer);

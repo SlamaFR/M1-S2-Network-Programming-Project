@@ -44,6 +44,7 @@ public class FileSender {
     public void send() {
         var thread = new Thread(() -> {
             try {
+                var chunkQueued = 0;
                 while (inputStream.available() > 0) {
                     var bytes = inputStream.readNBytes(Math.min(inputStream.available(), CHUNK_SIZE));
                     var packet = new FileChunk(
@@ -56,8 +57,10 @@ public class FileSender {
                         bytes
                     );
                     ctx.enqueueFileChunk(packet);
+                    chunkQueued++;
                 }
                 selector.wakeup();
+                System.out.println("Chunks queued : " + chunkQueued);
             } catch (IOException e) {
                 throw new UncheckedIOException(e);
             }

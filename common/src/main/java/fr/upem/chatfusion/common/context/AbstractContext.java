@@ -56,7 +56,7 @@ public abstract class AbstractContext implements Context {
             close();
             return;
         }
-        System.out.println(bufferOut);
+        System.out.println("before writing bufferOut : " + bufferOut);
         var bytes = channel.write(bufferOut);
         bufferOut.compact();
         if (bytes == 0) {

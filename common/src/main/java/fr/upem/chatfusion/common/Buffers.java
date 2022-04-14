@@ -27,7 +27,8 @@ public final class Buffers {
         if (src.remaining() <= dst.remaining()) {
             dst.put(src);
             return true;
-        } else {
+        }
+        else {
             var oldLimit = src.limit();
             src.limit(dst.remaining());
             dst.put(src);
