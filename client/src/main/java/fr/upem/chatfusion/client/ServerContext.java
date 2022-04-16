@@ -52,8 +52,9 @@ public class ServerContext extends AbstractContext {
     @Override
     public void processOut() {
         while(bufferOut.hasRemaining() && (!queue.isEmpty() || !fileQueue.isEmpty())) {
-            processQueue(queue);
-            processQueue(fileQueue);
+            if (!processQueue(queue) && !processQueue(fileQueue)) {
+                break;
+            }
         }
     }
 
@@ -64,17 +65,16 @@ public class ServerContext extends AbstractContext {
         updateInterestOps();
     }
 
-    private void processQueue(Queue<ByteBuffer> queue) {
+    private boolean processQueue(Queue<ByteBuffer> queue) {
         if (queue.isEmpty()) {
-            return;
+            return false;
         }
         var buffer = queue.peek();
-        System.out.println("in client processQueue : " + buffer + " | bufferOut " + bufferOut + " | queue : " + queue.size());
-        if (!buffer.hasRemaining()) {
+        if (bufferOut.remaining() >= buffer.remaining()) {
+            bufferOut.put(buffer);
             queue.poll();
-            System.out.println("polled : " + queue.size());
-            return;
+            return true;
         }
-        Buffers.tryPut(bufferOut, buffer);
+        return false;
     }
 }

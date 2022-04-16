@@ -57,6 +57,7 @@ public class Client {
             try {
                 Helpers.printKeys(selector);
                 selector.select(this::treatKey);
+                System.out.println("Selector wake up");
                 processCommands();
             } catch (UncheckedIOException tunneled) {
                 throw tunneled.getCause();

@@ -67,7 +67,6 @@ public class FileSender {
         });
         thread.setDaemon(true);
         thread.start();
-
     }
 
 }
