@@ -14,7 +14,11 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.nio.file.Path;
+
+import java.time.Instant;
 import java.util.Objects;
+
+import java.util.Random;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.logging.Logger;
 
@@ -29,6 +33,7 @@ public class Client {
     private final Path basePath;
     private final Thread console;
     private final ArrayBlockingQueue<Runnable> commands;
+    private int transferIDCounter;
 
     private ServerContext uniqueContext;
     private int serverId;
@@ -41,6 +46,7 @@ public class Client {
         this.basePath = basePath;
         this.console = new Thread(new Console(this));
         this.commands = new ArrayBlockingQueue<>(10);
+        this.transferIDCounter = 0;
     }
 
     public void launch() throws IOException {
@@ -52,12 +58,10 @@ public class Client {
         console.setDaemon(true);
         // Sending authentication packet
         uniqueContext.enqueuePacket(new AuthGst(nickname));
-
         while (!Thread.interrupted()) {
             try {
                 Helpers.printKeys(selector);
                 selector.select(this::treatKey);
-                System.out.println("Selector wake up");
                 processCommands();
             } catch (UncheckedIOException tunneled) {
                 throw tunneled.getCause();
@@ -116,7 +120,8 @@ public class Client {
         Objects.requireNonNull(filePath);
         enqueueCommand(() -> {
             try {
-                new FileSender(uniqueContext, selector, serverId, this.nickname, nickname, Path.of(basePath + "/" + filePath)).send();
+                new FileSender(uniqueContext, selector, serverId, this.nickname, transferIDCounter, nickname, Path.of(basePath + "/" + filePath)).send();
+                transferIDCounter++;
             } catch (IOException e) {
                 System.err.println(e.getMessage());
                 return ;

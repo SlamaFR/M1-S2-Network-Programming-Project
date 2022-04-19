@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.channels.Selector;
 import java.nio.file.Path;
+import java.util.Random;
 
 public class FileSender {
 
@@ -21,13 +22,15 @@ public class FileSender {
     private final String filename;
     private final FileInputStream inputStream;
     private final int chunkNumber;
+    private final int transferID;
 
-    public FileSender(ServerContext ctx, Selector selector, int dstServerId, String srcNickname, String dstNickname, Path path) throws IOException {
+    public FileSender(ServerContext ctx, Selector selector, int dstServerId, String srcNickname, int transferID, String dstNickname, Path path) throws IOException {
         this.ctx = ctx;
         this.selector = selector;
         this.dstServerId = dstServerId;
         this.dstNickname = dstNickname;
         this.srcNickname = srcNickname;
+        this.transferID = transferID;
         var file = path.toFile();
 
         System.out.println(path);
@@ -42,31 +45,25 @@ public class FileSender {
     }
 
     public void send() {
-        var thread = new Thread(() -> {
-            try {
-                var chunkQueued = 0;
-                while (inputStream.available() > 0) {
-                    var bytes = inputStream.readNBytes(Math.min(inputStream.available(), CHUNK_SIZE));
-                    var packet = new FileChunk(
-                        dstServerId,
-                        srcNickname,
-                        dstNickname,
-                        filename,
-                        chunkNumber,
-                        bytes.length,
-                        bytes
-                    );
-                    ctx.enqueueFileChunk(packet);
-                    chunkQueued++;
-                }
-                selector.wakeup();
-                System.out.println("Chunks queued : " + chunkQueued);
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
+        try {
+            while (inputStream.available() > 0) {
+                var bytes = inputStream.readNBytes(Math.min(inputStream.available(), CHUNK_SIZE));
+                var packet = new FileChunk(
+                    dstServerId,
+                    srcNickname,
+                    dstNickname,
+                    transferID,
+                    filename,
+                    chunkNumber,
+                    bytes.length,
+                    bytes
+                );
+                ctx.enqueueFileChunk(packet);
             }
-        });
-        thread.setDaemon(true);
-        thread.start();
+            selector.wakeup();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
 }

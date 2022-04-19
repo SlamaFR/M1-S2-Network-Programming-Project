@@ -2,16 +2,19 @@ package fr.upem.chatfusion.client;
 
 import fr.upem.chatfusion.common.packet.*;
 
+import java.io.File;
+import java.util.HashMap;
 import java.util.Objects;
 
 public class ServerVisitor implements PacketVisitor {
 
     private final Client client;
-    private int numberOfChunksToReceive = 0;
+    private final HashMap<FileReceiver, Integer> currentFilesReceiving;
 
     public ServerVisitor(Client client) {
         Objects.requireNonNull(client);
         this.client = Objects.requireNonNull(client);
+        this.currentFilesReceiving = new HashMap<>();
     }
 
     @Override
@@ -46,10 +49,12 @@ public class ServerVisitor implements PacketVisitor {
     }
 
     public void visit(FileChunk packet) {
-        numberOfChunksToReceive++;
-        System.out.println("receive chunks : "+ numberOfChunksToReceive + " / " + packet.chunkNumber());
-        if (numberOfChunksToReceive == packet.chunkNumber()) {
-            numberOfChunksToReceive = 0;
+        Objects.requireNonNull(packet);
+        var key = new FileReceiver(packet.transferID(), packet.srcNickname());
+        currentFilesReceiving.putIfAbsent(key, 0);
+        var numberOfChunksReceive = currentFilesReceiving.compute(key, (k, v) -> ++v);
+        if (numberOfChunksReceive == packet.chunkNumber()) {
+            currentFilesReceiving.remove(key);
             System.out.printf("[%d] %s received from %s\n", packet.serverId(), packet.filename(), packet.srcNickname());
         }
     }

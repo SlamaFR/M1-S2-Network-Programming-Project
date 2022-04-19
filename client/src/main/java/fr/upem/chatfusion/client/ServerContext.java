@@ -1,6 +1,5 @@
 package fr.upem.chatfusion.client;
 
-import fr.upem.chatfusion.common.Buffers;
 import fr.upem.chatfusion.common.context.AbstractContext;
 import fr.upem.chatfusion.common.packet.FileChunk;
 import fr.upem.chatfusion.common.reader.PacketReader;
