@@ -1,6 +1,7 @@
 package fr.upem.chatfusion.server.packet;
 
 import fr.upem.chatfusion.common.packet.AuthGst;
+import fr.upem.chatfusion.common.packet.FusionAckLeader;
 import fr.upem.chatfusion.common.packet.FusionInit;
 import fr.upem.chatfusion.common.packet.PacketVisitor;
 import fr.upem.chatfusion.server.Server;
@@ -24,6 +25,11 @@ public class DefaultVisitor implements PacketVisitor {
 
     @Override
     public void visit(FusionInit packet) {
-        PacketVisitor.super.visit(packet);
+        server.initIncomingFusion(packet, key);
+    }
+
+    @Override
+    public void visit(FusionAckLeader packet) {
+        server.handleFusionAckLeader(packet, key);
     }
 }

@@ -13,6 +13,9 @@ import java.util.Objects;
 
 public record FusionRsp(byte status) implements Packet {
 
+    public static byte OK = 0;
+    public static byte ERROR = 1;
+
     @Override
     public ByteBuffer toByteBuffer() {
         var buffer = ByteBuffer.allocate(2 * Byte.BYTES);

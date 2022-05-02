@@ -24,7 +24,7 @@ public class ClientVisitor implements PacketVisitor {
     public void visit(MsgPbl packet) {
         Objects.requireNonNull(packet);
         if (packet.nickname().equals(context.getNickname())) {
-            server.dispatchPublicMessage(packet);
+            server.dispatchPublicMessage(packet, true);
         }
     }
 

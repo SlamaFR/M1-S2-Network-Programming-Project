@@ -7,6 +7,7 @@ import fr.upem.chatfusion.common.reader.PacketReader;
 import fr.upem.chatfusion.common.reader.Reader;
 import fr.upem.chatfusion.server.packet.DefaultVisitor;
 
+import java.net.InetSocketAddress;
 import java.nio.channels.SelectionKey;
 import java.util.logging.Logger;
 
@@ -17,12 +18,14 @@ public class PeerContext extends AbstractContext {
     private final Server server;
     private final PacketReader packetReader;
 
+    private InetSocketAddress address;
     private PacketVisitor visitor;
     private String nickname;
 
-    public PeerContext(Server server, SelectionKey key) {
-        super(key, true);
+    public PeerContext(Server server, SelectionKey key, InetSocketAddress address, boolean incoming) {
+        super(key, incoming);
         this.server = server;
+        this.address = address;
         this.packetReader = new PacketReader();
         this.visitor = new DefaultVisitor(server, key);
     }
@@ -56,7 +59,7 @@ public class PeerContext extends AbstractContext {
             var buffer = queue.peek();
             if (!buffer.hasRemaining()) {
                 queue.poll();
-                return;
+                continue;
             }
             Buffers.tryPut(bufferOut, buffer);
         }
@@ -74,11 +77,23 @@ public class PeerContext extends AbstractContext {
         this.nickname = nickname;
     }
 
+    public InetSocketAddress getAddress() {
+        return address;
+    }
+
+    public void setAddress(InetSocketAddress address) {
+        this.address = address;
+    }
+
     @Override
     public void close() {
         super.close();
         if (nickname != null) {
             server.disconnect(nickname);
         }
+    }
+
+    public void detach() {
+        closed = true;
     }
 }

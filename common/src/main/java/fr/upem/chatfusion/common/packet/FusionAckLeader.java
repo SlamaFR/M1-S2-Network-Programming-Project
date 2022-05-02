@@ -10,19 +10,14 @@ import java.util.Objects;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-public record FusionAckLeader(String username) implements Packet {
-
-    public FusionAckLeader {
-        Objects.requireNonNull(username);
-    }
+public record FusionAckLeader(int serverId) implements Packet {
 
     @Override
     public ByteBuffer toByteBuffer() {
-        var usernameBytes = UTF_8.encode(username);
-        var buffer = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES + usernameBytes.remaining());
+        var buffer = ByteBuffer.allocate(Byte.BYTES + Integer.BYTES);
 
         buffer.put(OpCode.FUSION_ACKNOWLEDGE_LEADER.getCode());
-        Buffers.putEncodedString(buffer, usernameBytes);
+        buffer.putInt(serverId);
         return buffer;
     }
 
@@ -35,11 +30,11 @@ public record FusionAckLeader(String username) implements Packet {
     public static Reader<FusionAckLeader> getReader() {
         return new AbstractPacketReader<>() {
 
-            private String username;
+            private int serverId;
 
             private final MultiPartReader<FusionAckLeader> reader = new MultiPartReader<>(List.of(
-                    MultiPartReader.getString(s -> username = s)
-            ), () -> new FusionAckLeader(username));
+                    MultiPartReader.getInt(i -> serverId = i)
+            ), () -> new FusionAckLeader(serverId));
 
             @Override
             MultiPartReader<FusionAckLeader> reader() {
