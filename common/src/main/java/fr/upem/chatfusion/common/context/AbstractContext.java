@@ -22,17 +22,17 @@ public abstract class AbstractContext implements Context {
     protected final ByteBuffer bufferOut;
     protected final ArrayDeque<ByteBuffer> queue;
 
-    private boolean connected;
+    private boolean incoming;
     protected boolean closed = false;
 
-    public AbstractContext(SelectionKey key, boolean connected) {
+    public AbstractContext(SelectionKey key, boolean incoming) {
         Objects.requireNonNull(key);
         this.key = key;
         this.channel = (SocketChannel) key.channel();
         this.bufferIn = ByteBuffer.allocateDirect(BUFFER_SIZE);
         this.bufferOut = ByteBuffer.allocateDirect(BUFFER_SIZE);
         this.queue = new ArrayDeque<>();
-        this.connected = connected;
+        this.incoming = incoming;
     }
 
     @Override
@@ -71,7 +71,7 @@ public abstract class AbstractContext implements Context {
         if (!channel.finishConnect()) {
             return;
         }
-        connected = true;
+        incoming = true;
         updateInterestOps();
     }
 
@@ -85,7 +85,7 @@ public abstract class AbstractContext implements Context {
 
     @Override
     public void updateInterestOps() {
-        if (!connected) {
+        if (!incoming) {
             return;
         }
         var interestOps = 0;
