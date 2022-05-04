@@ -16,6 +16,7 @@ public class FileSender {
 
     private final ServerContext ctx;
     private final Selector selector;
+    private final int srcServerId;
     private final int dstServerId;
     private final String srcNickname;
     private final String dstNickname;
@@ -24,9 +25,10 @@ public class FileSender {
     private final int chunkNumber;
     private final int transferID;
 
-    public FileSender(ServerContext ctx, Selector selector, int dstServerId, String srcNickname, int transferID, String dstNickname, Path path) throws IOException {
+    public FileSender(ServerContext ctx, Selector selector, int srcServerId, int dstServerId, String srcNickname, int transferID, String dstNickname, Path path) throws IOException {
         this.ctx = ctx;
         this.selector = selector;
+        this.srcServerId = srcServerId;
         this.dstServerId = dstServerId;
         this.dstNickname = dstNickname;
         this.srcNickname = srcNickname;
@@ -49,8 +51,9 @@ public class FileSender {
             while (inputStream.available() > 0) {
                 var bytes = inputStream.readNBytes(Math.min(inputStream.available(), CHUNK_SIZE));
                 var packet = new FileChunk(
-                    dstServerId,
+                    srcServerId,
                     srcNickname,
+                    dstServerId,
                     dstNickname,
                     transferID,
                     filename,

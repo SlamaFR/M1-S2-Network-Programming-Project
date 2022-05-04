@@ -10,7 +10,7 @@ import java.util.Objects;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-public record FileChunk(int serverId, String srcNickname, String dstNickname, int transferID, String filename, int chunkNumber, int chunkSize, byte[] chunk) implements Packet {
+public record FileChunk(int srcServerId, String srcNickname, int dstServerId, String dstNickname, int transferID, String filename, int chunkNumber, int chunkSize, byte[] chunk) implements Packet {
 
     public FileChunk {
         Objects.requireNonNull(srcNickname);
@@ -24,11 +24,12 @@ public record FileChunk(int serverId, String srcNickname, String dstNickname, in
         var srcNicknameBytes = UTF_8.encode(srcNickname);
         var dstNicknameBytes = UTF_8.encode(dstNickname);
         var filenameBytes = UTF_8.encode(filename);
-        var buffer = ByteBuffer.allocate(Byte.BYTES + 7 * Integer.BYTES + srcNicknameBytes.remaining() + dstNicknameBytes.remaining() + filenameBytes.remaining() + chunk.length);
+        var buffer = ByteBuffer.allocate(Byte.BYTES + 8 * Integer.BYTES + srcNicknameBytes.remaining() + dstNicknameBytes.remaining() + filenameBytes.remaining() + chunk.length);
 
         buffer.put(OpCode.FILE_CHUNK.getCode());
-        buffer.putInt(serverId);
+        buffer.putInt(srcServerId);
         Buffers.putEncodedString(buffer, srcNicknameBytes);
+        buffer.putInt(dstServerId);
         Buffers.putEncodedString(buffer, dstNicknameBytes);
         buffer.putInt(transferID);
         Buffers.putEncodedString(buffer, filenameBytes);
@@ -47,7 +48,8 @@ public record FileChunk(int serverId, String srcNickname, String dstNickname, in
     public static Reader<FileChunk> getReader() {
         return new AbstractPacketReader<>() {
 
-            private int serverId;
+            private int srcServerId;
+            private int dstServerId;
             private String srcNickname;
             private String dstNickname;
             private String filename;
@@ -56,14 +58,15 @@ public record FileChunk(int serverId, String srcNickname, String dstNickname, in
             private int transferID;
 
             private final MultiPartReader<FileChunk> reader = new MultiPartReader<>(List.of(
-                    MultiPartReader.getInt(i -> serverId = i),
+                    MultiPartReader.getInt(i -> srcServerId = i),
                     MultiPartReader.getString(s -> srcNickname = s),
+                    MultiPartReader.getInt(i -> dstServerId = i),
                     MultiPartReader.getString(s -> dstNickname = s),
                     MultiPartReader.getInt(i -> transferID = i),
                     MultiPartReader.getString(s -> filename = s),
                     MultiPartReader.getInt(i -> chunkNumber = i),
                     MultiPartReader.getBytes(b -> chunk = b)
-            ), () -> new FileChunk(serverId, srcNickname, dstNickname, transferID, filename, chunkNumber, chunk.length, chunk));
+            ), () -> new FileChunk(srcServerId, srcNickname, dstServerId, dstNickname, transferID, filename, chunkNumber, chunk.length, chunk));
 
             @Override
             MultiPartReader<FileChunk> reader() {

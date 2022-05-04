@@ -2,17 +2,7 @@ package fr.upem.chatfusion.server;
 
 import fr.upem.chatfusion.common.Channels;
 import fr.upem.chatfusion.common.context.Context;
-import fr.upem.chatfusion.common.packet.AuthRsp;
-import fr.upem.chatfusion.common.packet.FusionAckLeader;
-import fr.upem.chatfusion.common.packet.FusionChangeLeader;
-import fr.upem.chatfusion.common.packet.FusionInit;
-import fr.upem.chatfusion.common.packet.FusionInitFwd;
-import fr.upem.chatfusion.common.packet.FusionInitKo;
-import fr.upem.chatfusion.common.packet.FusionInitOk;
-import fr.upem.chatfusion.common.packet.FusionReq;
-import fr.upem.chatfusion.common.packet.FusionRsp;
-import fr.upem.chatfusion.common.packet.MsgPbl;
-import fr.upem.chatfusion.common.packet.MsgPrv;
+import fr.upem.chatfusion.common.packet.*;
 import fr.upem.chatfusion.server.packet.ClientVisitor;
 import fr.upem.chatfusion.server.packet.ServerVisitor;
 
@@ -183,6 +173,24 @@ public class Server {
                 }
             } else {
                 leader.enqueuePacket(packet);
+            }
+        }
+    }
+
+    public void dispatchFileChunk(FileChunk packet) {
+        Objects.requireNonNull(packet);
+        if (packet.dstServerId() == id) {
+            var context = clients.get(packet.dstNickname());
+            if (context != null) {
+                context.enqueueFileChunk(packet);
+            }
+        } else {
+            if (leader == null) {
+                if (neighbors.containsKey(packet.dstServerId())) {
+                    neighbors.get(packet.dstServerId()).enqueueFileChunk(packet);
+                }
+            } else {
+                leader.enqueueFileChunk(packet);
             }
         }
     }

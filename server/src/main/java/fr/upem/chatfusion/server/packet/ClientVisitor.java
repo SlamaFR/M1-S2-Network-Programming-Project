@@ -1,6 +1,5 @@
 package fr.upem.chatfusion.server.packet;
 
-import fr.upem.chatfusion.common.context.Context;
 import fr.upem.chatfusion.common.packet.FileChunk;
 import fr.upem.chatfusion.common.packet.MsgPbl;
 import fr.upem.chatfusion.common.packet.MsgPrv;
@@ -39,6 +38,8 @@ public class ClientVisitor implements PacketVisitor {
     @Override
     public void visit(FileChunk packet) {
         Objects.requireNonNull(packet);
-        PacketVisitor.super.visit(packet);
+        if (packet.srcNickname().equals(context.getNickname())) {
+            server.dispatchFileChunk(packet);
+        }
     }
 }

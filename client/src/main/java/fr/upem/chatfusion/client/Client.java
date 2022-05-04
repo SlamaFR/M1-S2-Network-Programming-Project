@@ -14,11 +14,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.nio.file.Path;
-
-import java.time.Instant;
 import java.util.Objects;
-
-import java.util.Random;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.logging.Logger;
 
@@ -120,7 +116,7 @@ public class Client {
         Objects.requireNonNull(filePath);
         enqueueCommand(() -> {
             try {
-                new FileSender(uniqueContext, selector, serverId, this.nickname, transferIDCounter, nickname, Path.of(basePath + "/" + filePath)).send();
+                new FileSender(uniqueContext, selector, this.serverId, serverId, this.nickname, transferIDCounter, nickname, Path.of(basePath + "/" + filePath)).send();
                 transferIDCounter++;
             } catch (IOException e) {
                 System.err.println(e.getMessage());
