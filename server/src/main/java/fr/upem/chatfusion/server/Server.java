@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.nio.channels.CancelledKeyException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
@@ -90,7 +91,7 @@ public class Server {
             } else if (key.isValid() && key.isConnectable()) {
                 ((Context) key.attachment()).doConnect();
             }
-        } catch (IOException e) {
+        } catch (IOException | CancelledKeyException e) {
             logger.info("Connection closed");
             Channels.silentlyClose(key.channel());
         }

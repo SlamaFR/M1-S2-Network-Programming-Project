@@ -1,5 +1,6 @@
 package fr.upem.chatfusion.server.packet;
 
+import fr.upem.chatfusion.common.packet.FileChunk;
 import fr.upem.chatfusion.common.packet.FusionChangeLeader;
 import fr.upem.chatfusion.common.packet.FusionInitFwd;
 import fr.upem.chatfusion.common.packet.FusionInitKo;
@@ -35,6 +36,12 @@ public class ServerVisitor implements PacketVisitor {
     public void visit(MsgPrv packet) {
         Objects.requireNonNull(packet);
         server.dispatchPrivateMessage(packet);
+    }
+
+    @Override
+    public void visit(FileChunk packet) {
+        Objects.requireNonNull(packet);
+        server.dispatchFileChunk(packet);
     }
 
     @Override
