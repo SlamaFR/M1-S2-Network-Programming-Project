@@ -1,8 +1,8 @@
 package fr.upem.chatfusion.client;
 
 import fr.upem.chatfusion.common.Channels;
-import fr.upem.chatfusion.common.Helpers;
 import fr.upem.chatfusion.common.packet.AuthGst;
+import fr.upem.chatfusion.common.packet.FileChunk;
 import fr.upem.chatfusion.common.packet.MsgPbl;
 import fr.upem.chatfusion.common.packet.MsgPrv;
 
@@ -14,6 +14,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.Objects;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.logging.Logger;
@@ -29,6 +30,7 @@ public class Client {
     private final Path basePath;
     private final Thread console;
     private final ArrayBlockingQueue<Runnable> commands;
+    private final HashMap<Integer, FileReceiver> fileReceivers;
     private int transferIDCounter;
 
     private ServerContext uniqueContext;
@@ -42,6 +44,7 @@ public class Client {
         this.basePath = basePath;
         this.console = new Thread(new Console(this));
         this.commands = new ArrayBlockingQueue<>(10);
+        this.fileReceivers = new HashMap<>();
         this.transferIDCounter = 0;
     }
 
@@ -56,7 +59,6 @@ public class Client {
         uniqueContext.enqueuePacket(new AuthGst(nickname));
         while (!Thread.interrupted()) {
             try {
-                Helpers.printKeys(selector);
                 selector.select(this::treatKey);
                 processCommands();
             } catch (UncheckedIOException tunneled) {
@@ -118,9 +120,8 @@ public class Client {
             try {
                 new FileSender(uniqueContext, selector, this.serverId, serverId, this.nickname, transferIDCounter, nickname, Path.of(basePath + "/" + filePath)).send();
                 transferIDCounter++;
-            } catch (IOException e) {
-                System.err.println(e.getMessage());
-                return ;
+            } catch (IOException | IllegalArgumentException e) {
+                System.out.println("Error: " + e.getMessage());
             }
         });
     }
@@ -133,5 +134,23 @@ public class Client {
         this.serverId = serverId;
         console.start();
         System.out.println("Welcome to ChatFusion, " + nickname + "!");
+    }
+
+    public void handleFileChunk(FileChunk packet) throws IOException {
+        Objects.requireNonNull(packet);
+        try {
+            var receiver = fileReceivers.computeIfAbsent(packet.transferID(), id -> {
+                try {
+                    var fileReceiver = new FileReceiver(basePath, packet.filename());
+                    fileReceiver.init();
+                    return fileReceiver;
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                }
+            });
+            receiver.writeChunk(packet);
+        } catch (UncheckedIOException e) {
+            throw e.getCause();
+        }
     }
 }

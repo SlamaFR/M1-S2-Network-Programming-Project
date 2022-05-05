@@ -63,7 +63,6 @@ public class Server {
         System.out.println("Server " + id + " started");
         while (!Thread.interrupted() && serverSocketChannel.isOpen()) {
             try {
-                //Helpers.printKeys(selector);
                 selector.select(this::treatKey);
                 processCommands();
             } catch (UncheckedIOException tunneled) {

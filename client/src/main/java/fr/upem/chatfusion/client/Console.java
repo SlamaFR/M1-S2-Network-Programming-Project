@@ -13,7 +13,7 @@ public class Console implements Runnable {
     private final Client client;
 
     public Console(Client client) {
-        this.client = Objects.requireNonNull(client);;
+        this.client = Objects.requireNonNull(client);
     }
 
     @Override
@@ -38,7 +38,7 @@ public class Console implements Runnable {
                 var nickname = prefix[0];
                 var serverId = Integer.parseInt(prefix[1]);
                 client.sendPrivateMessage(serverId, nickname, args[1]);
-            } catch (NumberFormatException e) {
+            } catch (NumberFormatException | IndexOutOfBoundsException e) {
                 System.out.println("Usage: @<nickname>:<serverId> <message>");
             }
         } else if (line.startsWith("/")) {
@@ -48,12 +48,11 @@ public class Console implements Runnable {
                 var nickname = prefix[0];
                 var serverId = Integer.parseInt(prefix[1]);
                 client.sendFile(serverId, nickname, args[1]);
-            } catch (NumberFormatException e) {
+            } catch (NumberFormatException | IndexOutOfBoundsException e) {
                 System.out.println("Usage: /<nickname>:<serverId> <file path>");
             }
         } else {
             client.sendPublicMessage(line);
         }
-
     }
 }

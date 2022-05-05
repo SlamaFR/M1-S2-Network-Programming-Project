@@ -1,43 +1,55 @@
 package fr.upem.chatfusion.client;
 
-import java.io.File;
+import fr.upem.chatfusion.common.packet.FileChunk;
+
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.util.Objects;
 
-public record FileReceiver(int transferID, String srcNickname, String dstNickname, String filename) {
+public final class FileReceiver implements AutoCloseable {
 
+    private final Path path;
 
+    private FileOutputStream outputStream;
+    private int received;
 
-    public boolean createFile() {
-        var file = new File(dstNickname+"-"+filename);
-        try {
-            if (file.createNewFile()) {
-                System.out.println("file created");
-                return true;
-            }
-        } catch (IOException e) {
-            return false;
-        }
-        return false;
+    public FileReceiver(Path basePath, String filename) {
+        this.path = Path.of(basePath + "/" + filename);
+        this.received = 0;
     }
 
-
-    public boolean writeChunk(byte[] chunk) {
+    public void init() throws IOException {
+        if (outputStream != null) {
+            throw new IllegalStateException("FileReceiver has already been initialized");
+        }
+        var file = path.toFile();
+        if (!file.createNewFile()) {
+            System.out.printf("File %s already exists\n", file.getName());
+            throw new IOException("file already exists");
+        }
         try {
-            var fos= new FileOutputStream(dstNickname+"-"+filename, true);
-            fos.write(chunk);
-            fos.close();
-            return true;
+            outputStream = new FileOutputStream(file, true);
         } catch (FileNotFoundException e) {
-            System.out.println("file not found ! ");
-            return false;
-        } catch (IOException e) {
-            System.out.println(e.getMessage());
-            return false;
+            throw new AssertionError(e);
         }
     }
 
+    public void writeChunk(FileChunk packet) throws IOException {
+        Objects.requireNonNull(packet);
+        if (outputStream == null) {
+            throw new IllegalStateException("FileReceiver has not been initialized yet");
+        }
+        outputStream.write(packet.chunk());
+        if (received++ == packet.chunkNumber()) {
+            System.out.printf("File %s received\n", path.getFileName());
+            close();
+        }
+    }
 
-
+    @Override
+    public void close() throws IOException {
+        outputStream.close();
+    }
 }

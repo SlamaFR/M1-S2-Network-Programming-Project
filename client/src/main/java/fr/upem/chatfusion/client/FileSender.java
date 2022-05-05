@@ -35,8 +35,6 @@ public class FileSender {
         this.transferID = transferID;
         var file = path.toFile();
 
-        System.out.println(path);
-
         if (!file.exists()) {
             throw new IllegalArgumentException("File does not exist");
         }
