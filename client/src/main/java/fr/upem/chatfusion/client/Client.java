@@ -118,7 +118,7 @@ public class Client {
         Objects.requireNonNull(filePath);
         enqueueCommand(() -> {
             try {
-                new FileSender(uniqueContext, selector, this.serverId, serverId, this.nickname, transferIDCounter++, nickname, Path.of(basePath + "/" + filePath)).send();
+                new FileSender(uniqueContext, selector, this.serverId, serverId, this.nickname, transferIDCounter++, nickname, Path.of(filePath)).send();
             } catch (IOException | IllegalArgumentException e) {
                 System.out.println("Error: " + e.getMessage());
             }
