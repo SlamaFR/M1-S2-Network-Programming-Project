@@ -74,7 +74,8 @@ Summary
    another client connected to the server), or as a registered user by
    giving a nickname and password combination.
 
-   A client authenticating as a guest must send an 'AUTHGST' packet:
+   A client authenticating as a guest must send an
+   'AUTHENTICATION_GUEST' packet:
 
      1 byte      4 bytes      n bytes
    ┌────────┬───────────────┬──────────┐
@@ -82,7 +83,7 @@ Summary
    └────────┴───────────────┴──────────┘
 
    Whereas, a client authenticating as a registered user must send a
-   'AUTHUSR' packet:
+   'AUTHENTICATION_USER' packet:
 
      1 byte      4 bytes      n bytes       4 bytes      n bytes
    ┌────────┬───────────────┬──────────┬───────────────┬──────────┐
@@ -90,8 +91,8 @@ Summary
    └────────┴───────────────┴──────────┴───────────────┴──────────┘
 
    Once the server has received the authentication packet, it will
-   process credentials and reply a 'AUTHRSP' packet to the client to let
-   it know if the authentication succeeded or not:
+   process credentials and reply a 'AUTHENTICATION_RESPONSE' packet to
+   the client to let it know if the authentication succeeded or not:
 
      1 byte      1 byte
    ┌────────┬───────────────┐
@@ -119,27 +120,11 @@ Summary
 4. Public Messages
 
    If a client wants to send a message to everyone over the Fusion Chat
-   network, they need to send a 'MSGPBL' packet:
+   network, they need to send a 'PUBLIC_MESSAGE' packet:
 
-     1 byte     4 bytes      n bytes
-   ┌────────┬──────────────┬─────────┐
-   │  0x20  │ Message size │ Message │
-   └────────┴──────────────┴─────────┘
-
-   Just as a reminder, message must be encoded using the UTF-8 charset,
-   therefore the message size is the size of the encoded message.  Note
-   that the client DOES NOT give its identity in the packet, since the
-   server has already authenticated it.
-
-   Once the server has received the packet, it will send a 'MSGPBLINC'
-   to all its connected clients, consisting of the sender's identity
-   followed by the message.  The packet also contains the origin server
-   id to allow any client to tell from which server the message was
-   sent:
-
-     1 byte    4 bytes       4 bytes      n bytes      . . .
+     1 byte    4 bytes       4 bytes      n bytes
    ┌────────┬───────────┬───────────────┬──────────┐
-   │  0x30  │ Server ID │ Nickname size │ Nickname │   . . .
+   │  0x20  │ Server ID │ Nickname size │ Nickname │
    └────────┴───────────┴───────────────┴──────────┘
 
      . . .       4 bytes      n bytes
@@ -147,25 +132,12 @@ Summary
      . . .   │ Message size │ Message │
              └──────────────┴─────────┘
 
-   Clients receiving this packet will process it to display the name of
-   the sender and the message in their console.
+   Just as a reminder, message must be encoded using the UTF-8 charset,
+   therefore the message size is the size of the encoded message.
 
-   In another hand, the server will send a 'PCKFWD' to every server it
-   is connected to over the Chat Fusion network.  This is due to the
-   merge system of the Chat Fusion protocol.  This 'merge' system will
-   be discussed further in this document.  The packet is basically the
-   original packet of size n, prefixed with the 'PCKFWD' code and the
-   destination server ID:
-
-     1 byte    4 bytes        n bytes
-   ┌────────┬───────────┬─────────────────┐
-   │  0x50  │ Server ID │  MSGINC content │
-   └────────┴───────────┴─────────────────┘
-
-   This packet also contains the destination server ID to allow an
-   evolution of the Chat Fusion network that could work on a routing
-   system.  Please see '(10) Annex' section to get more details about
-   this evolution.
+   Once the server has received the packet, it will dispatch it to every
+   other client connected to the server, and throughout the network by
+   forwarding it to its leader or to all its neighbors.
 
 5. Private Messages
 
@@ -173,47 +145,26 @@ Summary
    its identity so that the server knows where to send the packet.
    Since the protocol allows server merges, the client must give the
    destination server in addition of the client identity.  To do so, the
-   client must send a 'MSGPRV' packet:
+   client must send a 'PRIVATE_MESSAGE' packet:
 
-     1 byte    4 bytes       4 bytes      n bytes      . . .
-   ┌────────┬───────────┬───────────────┬──────────┐
-   │  0x21  │ Server ID │ Nickname size │ Nickname │   . . .
-   └────────┴───────────┴───────────────┴──────────┘
+    1 byte     4 bytes           4 bytes           n bytes
+   ┌──────┬───────────────┬───────────────────┬──────────────┐
+   │ 0x30 │ Src Server ID │ Src nickname size │ Src nickname │
+   └──────┴───────────────┴───────────────────┴──────────────┘
+
+     . . .       4 bytes            4 bytes           n bytes
+             ┌───────────────┬───────────────────┬──────────────┐
+     . . .   │ Dst Server ID │ Dst nickname size │ Dst nickname │
+             └───────────────┴───────────────────┴──────────────┘
 
      . . .       4 bytes      n bytes
              ┌──────────────┬─────────┐
      . . .   │ Message size │ Message │
              └──────────────┴─────────┘
 
-   Please note that this packet is extremely similar to the 'MSGPBLINC'
-   packet, however their content and purpose are totally different,
-   resulting in a different packet code.
-
-   Once the server has received this packet, it will process it to
-   determine the destination server.  Then it will build a 'MSGPRVINC'
-   packet consisting of the origin server ID, the sender nickname, the
-   receiver nickname and the message:
-
-     1 byte     4 bytes          4 bytes            . . .
-   ┌─────────┬───────────┬──────────────────────┐
-   │  0x31   │ Server ID │ Sender Nickname size │   . . .
-   └─────────┴───────────┴──────────────────────┘
-
-     . . .         n bytes         4 bytes      n bytes
-             ┌─────────────────┬──────────────┬─────────┐
-     . . .   │ Sender Nickname │ Message size │ Message │
-             └─────────────────┴──────────────┴─────────┘
-
-   Once the server has built this packet, it sends it to the correct
-   server using a 'PCKFWD' packet:
-
-     1 byte    4 bytes         n bytes
-   ┌────────┬───────────┬────────────────────┐
-   │  0x50  │ Server ID │  MSGPRVINC content │
-   └────────┴───────────┴────────────────────┘
-
-   When the destination server has received the 'PCKFWD' packet, it will
-   extract the 'MSGPRVINC' and send it to the correct client.
+   Once the server has received the packet, it will either send it to
+   desired client if the server ID is the current server one, or forward
+   it to its leader or to all its neighbors if it is leader.
 
 6. File Transfers
 
@@ -221,55 +172,33 @@ Summary
    between them.  Files are sent in byte chunks of a maximal size of one
    kilobyte (1,024 bytes).
 
-   To do so, the client must send a 'FILECHNK' packet consisting of the
-   origin server id, followed by the nickname of the receiver, followed
-   by the file name, and finally the total number of chunks and its
-   content.  Please note that every transfer is identified by an
-   integer, this ensures two transfers between the same client with the
-   same filename and filesize will not clash.
+   To do so, the client must send a 'FILE_CHUNK' packet. Please note
+   that every transfer is identified by an integer, this ensures two
+   transfers between the same client with the same filename and
+   filesize will not clash.
 
-     1 byte    4 bytes       4 bytes      n bytes      . . .
-   ┌────────┬───────────┬───────────────┬──────────┐
-   │  0x40  │ Server ID │ Nickname size │ Nickname │   . . .
-   └────────┴───────────┴───────────────┴──────────┘
+    1 byte     4 bytes           4 bytes           n bytes
+   ┌──────┬───────────────┬───────────────────┬──────────────┐
+   │ 0x40 │ Src server ID │ Src nickname size │ Src nickname │
+   └──────┴───────────────┴───────────────────┴──────────────┘
 
-     . . .       4 bytes        4 bytes      n bytes      . . .
-             ┌─────────────┬───────────────┬──────────┐
-     . . .   │ Transfer ID │ Filename size │ Filename │   . . .
-             └─────────────┴───────────────┴──────────┘
+     . . .        4 bytes           4 bytes           n bytes
+              ┌───────────────┬───────────────────┬──────────────┐
+     . . .    │ Dst server ID │ Dst nickname size │ Dst nickname │
+              └───────────────┴───────────────────┴──────────────┘
 
-     . . .         4 bytes        1,024 bytes      . . .
-             ┌─────────────────┬───────────────┐
-     . . .   │ Number of chunk │ Chunk content │   . . .
-             └─────────────────┴───────────────┘
+     . . .        4 bytes        4 bytes      n bytes
+              ┌─────────────┬───────────────┬──────────┐
+     . . .    │ Transfer ID │ Filename size │ Filename │
+              └─────────────┴───────────────┴──────────┘
 
-   Once the server has received this packet, if the server ID differs,
-   the server forwards this packet to the desired server through a
-   'PCKFWD' packet.
+     . . .          4 bytes         4 bytes        n bytes
+              ┌──────────────────┬────────────┬───────────────┐
+     . . .    │ Number of chunks │ Chunk size │ Chunk content │
+              └──────────────────┴────────────┴───────────────┘
 
-     1 byte    4 bytes         n bytes
-   ┌────────┬───────────┬───────────────────┐
-   │  0x50  │ Server ID │  FILECHNK content │
-   └────────┴───────────┴───────────────────┘
-
-   Once the cprrect server has received this packet, it will build a
-   'FILECHNKINC'.  This packet has the origin server's ID instead of the
-    destination server and the sender nickname appended to it.
-
-     1 byte    4 bytes          4 bytes            . . .
-   ┌────────┬───────────┬──────────────────────┐
-   │  0x41  │ Server ID │ Sender Nickname size │   . . .
-   └────────┴───────────┴──────────────────────┘
-
-     . . .         n bytes          4 bytes        4 bytes       . . .
-             ┌─────────────────┬─────────────┬───────────────┐
-     . . .   │ Sender Nickname │ Transfer ID │ Filename size │   . . .
-             └─────────────────┴─────────────┴───────────────┘
-
-     . . .     n bytes        4 bytes        1,024 bytes      . . .
-             ┌──────────┬─────────────────┬───────────────┐
-     . . .   │ Filename │ Number of chunk │ Chunk content │   . . .
-             └──────────┴─────────────────┴───────────────┘
+   Once the server has received this packet, it acts just like message,
+   forwarding it to the client or to the leader.
 
    Client receiving these packets will rebuild the file using chunks
    content.  The name is used to save the file using its original name
@@ -277,124 +206,124 @@ Summary
 
 7. Server merge
 
-   The merge system relies on a dense mesh.  Indeed, every server is
-   connected to every other server on the Chat Fusion network.  Since
-   this approach is easy to implement but not efficient on big
-   structures, the total amount of connected servers in the same Chat
-   Fusion network is limited to 10 servers.  Please see '(10) annex'
-   section for further details about these implementation choices.
+   The fusion system relies on a leader/slaves concept. When two or more
+   servers are merged together, one of them is elected as the leader.
+   The leader manages the fusion process and is responsible for packet
+   traveling throughout the network.
 
-   If a server A wants to merge its network with another server B
-   network, A needs to connect to B, just like a normal client, and send
-   a 'MRGREQ' packet consisting of A's server ID and every connected
-   siblings:
+   Note: the leader is ALWAYS the server with the lowest ID.
 
-     1 byte    4 bytes         4 bytes              n * 12 bytes
-   ┌────────┬───────────┬────────────────────┬────────────────────────┐
-   │  0xA0  │ Server ID │ Number of siblings │ Sibling description... │
-   └────────┴───────────┴────────────────────┴────────────────────────┘
+   If the server 1 want to merge with server 2, it must send a
+   'MERGE_INIT' packet to server 2. This packet contains the server 1's
+   ID, its socket address and a list of all its neighbors IDs:
 
-   A sibling description is the sibling Server ID, its IPv4 address and
-   its working port :
+    1 byte   4 bytes          4 bytes             n bytes
+   ┌──────┬───────────┬──────────────────────┬───────────────┐
+   │ 0xA0 │ Server ID │ Address bytes length │ Address bytes │
+   └──────┴───────────┴──────────────────────┴───────────────┘
 
-          4 bytes             4 bytes           2 bytes
-   ┌───────────────────┬────────────────────┬──────────────┐
-   │ Sibling Server ID │ Sibling IP Address │ Sibling Port │
-   └───────────────────┴────────────────────┴──────────────┘
+     . . .        4 bytes           4 bytes            n*4 bytes
+              ┌──────────────┬─────────────────────┬───────────────┐
+     . . .    │ Address port │ Number of neighbors │ Neighbors IDs │
+              └──────────────┴─────────────────────┴───────────────┘
 
-   If B accepts the merge, it will respond with the 'MRGRSP' packet with
-   its own siblings:
+   When sever 2 receives this packet, it will look for common neighbors
+   and if none is found, it will respond with a 'FUSION_INIT_OK' packet.
+   This last packet is basically the same as the 'MERGE_INIT' packet,
+   with the code '0xA1'.
 
-     1 byte    4 bytes         4 bytes               n * 12 bytes
-   ┌────────┬───────────┬────────────────────┬────────────────────────┐
-   │  0xA1  │ Server ID │ Number of siblings │ Sibling description... │
-   └────────┴───────────┴────────────────────┴────────────────────────┘
+   If a common neighbor is found, it will send a 'MERGE_INIT_KO' packet.
 
-   Otherwise, if the two servers are already merged, B will respond with
-   a 'MRGDECL' packet:
+   Now that two servers are merged, server 1 is elected as the leader.
+   From now on, if server 2 wants to merge with another server OR if
+   another server wants to merge with server 2, fusion process must be
+   handled by the leader.
 
-     1 byte      1 byte
-   ┌────────┬──────────────┐
-   │  0xA2  │  Error code  │
-   └────────┴──────────────┘
+   a. Non-leader trying to merge
 
-   Error codes are listed below:
+   If server 2 wants to merge with another server, it will send a
+   'MERGE_REQUEST' packet to its leader with the address of the server
+   it wants to merge with:
 
-      -  0x00 : The servers are already merged.
+    1 byte        4 bytes             4 bytes         n bytes
+   ┌──────┬──────────────────────┬───────────────┬──────────────┐
+   │ 0xB0 │ Address bytes length │ Address bytes │ Address port │
+   └──────┴──────────────────────┴───────────────┴──────────────┘
 
-      -  0x01 : The merge would result in a server limit exceeding.
+   The leader, receiving this packet, will attempt a fusion with the
+   server. After the process, the leader will respond back with a
+   'MERGE_REQUEST_RESPONSE' containing a byte indicating if the fusion
+   succeeded or not.
 
-      -  0x02 : One or multiples server names conflicts among the
-                hypothetical merged network.
+   b. Server trying to merge with non-leader
 
-8. Global Errors
+   If another server wants to merge with server 2, when receiving the
+   'FUSION_INIT' packet, the server 2 will respond with a
+   'FUSION_INIT_FORWARD' containing the address of its leader. The other
+   server receiving this packet will try again with the new address.
 
-   If an error occurs on data transfer, an 'ERROR' packet is sent back
-   to the client.
+   c. Leader changing propagation
 
-     1 byte         4 bytes              n bytes          1 byte
-   ┌────────┬──────────────────────┬─────────────────┬──────────────┐
-   │  0xF0  │ Sender Nickname size │ Sender Nickname │  Error code  │
-   └────────┴──────────────────────┴─────────────────┴──────────────┘
+   When a fusion occurs between two groups of servers, one of the two
+   leaders will be demoted to a normal server. So this server will send
+   a 'FUSION_CHANGE_LEADER' to all its neighbors, telling them to
+   connect to the new leader. This packet contains the new leader's
+   address. Every server receiving this packet will try to connect to
+   the new leader, and send a 'FUSION_ACKNOWLEDGE_LEADER' packet to it.
+   The new leader receiving this will consider this server as a
+   neighbor.
 
-   Error codes are listed below:
-
-      -  0x00 : Destination server is unknown or not connected.
-
-      -  0x01 : The receiver client is unknown or not connected.
-
-9. Packets Codes
+8. Packets Codes
 
    This section summarizes all codes used in packets header.  Client can
    send the following packets.
 
    a. Authentication packets (0x00 & 0x10):
 
-      -  0x00 (AUTHGST) : Authentication as a guest.
+      -  0x00 (AUTHENTICATION_GUEST) : Authentication as a guest
 
-      -  0x01 (AUTHUSR) : Authentication as a registered user.
+      -  0x01 (AUTHENTICATION_USER) : Authentication as a registered
+                                      user
 
-      -  0x10 (AUTHRSP) : Authentication response.
+      -  0x10 (AUTHENTICATION_RESPONSE) : Authentication response
 
-   b. Message sending (0x20):
+   b. Public message (0x20):
 
-      -  0x20 (MSGPBL) : Global message (outgoing)
+      -  0x20 (PUBLIC_MESSAGE) : Public message
 
-      -  0x21 (MSGPRV) : Direct message (outgoing)
+   c. Private message (0x30):
 
-   c. Message distribution (0x30):
-
-      -  0x30 (MSGPBLINC) : Public message distribution (incoming)
-
-      -  0x31 (MSGPRVINC) : Private message distribution (incoming)
+      -  0x30 (PRIVATE_MESSAGE) : Direct message
 
    d. File transfer (0x40):
 
-      -  0x40 (FILECHNK) : File chunk transfer (outgoing)
+      -  0x40 (FILECHNK) : File chunk transfer
 
-      -  0x41 (FILECHNKINC) : File chunk transfer (incoming)
+   e. Fusion process (0xA0):
 
-   e. Packet distribution (0x50):
+      -  0xA0 (FUSION_INIT) : Initialization of fusion process
 
-      -  0x50 (PCKFWD) : Packet forwarding to another server.
+      -  0xA1 (FUSION_INIT_OK) : Initialization of fusion process
+                                 succeeded
 
-   f. Server fusion (0xA0):
+      -  0xA2 (FUSION_INIT_KO) : Initialization of fusion process failed
 
-      -  0xA0 (MRGREQ) : Request to merge containing siblings info.
+      -  0xA3 (FUSION_INIT_FORWARD) : Forwarding of fusion init
 
-      -  0xA1 (MRGRSP) : Merge request response containing siblings.
+   f. Fusion request (0xB0):
 
-      -  0xA2 (MRGDCL) : Merge request rejection.
+      -  0xB0 (FUSION_REQUEST) : Request to merge
 
-   g. Errors (0xF0):
+      -  0xA1 (FUSION_REQUEST_RESPONSE) : Response for a fusion request
 
-      -  0xF0 (ERROR) : Packet containing error code.
+   g. Leader changing (0xC0):
 
-   Every packet marked as 'outgoing' is traveling FROM a client TO a
-   server, whereas an 'incoming' packet is traveling FROM a server TO a
-   client.
+      -  0xC0 (FUSION_CHANGE_LEADER) : Changing leader
 
-10. Annex
+      -  0xC1 (FUSION_ACKNOWLEDGE_LEADER) : Acknowledgement of new
+                                            leader
+
+9. Annex
 
    Talking about the merge system, we wanted to implement a smart routed
    mesh, using routing tables updating accordingly to new connections
