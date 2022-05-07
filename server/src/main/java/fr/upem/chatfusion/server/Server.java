@@ -2,14 +2,24 @@ package fr.upem.chatfusion.server;
 
 import fr.upem.chatfusion.common.Channels;
 import fr.upem.chatfusion.common.context.Context;
-import fr.upem.chatfusion.common.packet.*;
+import fr.upem.chatfusion.common.packet.AuthRsp;
+import fr.upem.chatfusion.common.packet.FileChunk;
+import fr.upem.chatfusion.common.packet.FusionAckLeader;
+import fr.upem.chatfusion.common.packet.FusionChangeLeader;
+import fr.upem.chatfusion.common.packet.FusionInit;
+import fr.upem.chatfusion.common.packet.FusionInitFwd;
+import fr.upem.chatfusion.common.packet.FusionInitKo;
+import fr.upem.chatfusion.common.packet.FusionInitOk;
+import fr.upem.chatfusion.common.packet.FusionReq;
+import fr.upem.chatfusion.common.packet.FusionRsp;
+import fr.upem.chatfusion.common.packet.MsgPbl;
+import fr.upem.chatfusion.common.packet.MsgPrv;
 import fr.upem.chatfusion.server.packet.ClientVisitor;
 import fr.upem.chatfusion.server.packet.ServerVisitor;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.nio.channels.CancelledKeyException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -18,11 +28,9 @@ import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Logger;
 
 public class Server {

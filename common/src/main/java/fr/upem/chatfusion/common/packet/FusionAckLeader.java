@@ -1,14 +1,11 @@
 package fr.upem.chatfusion.common.packet;
 
-import fr.upem.chatfusion.common.Buffers;
 import fr.upem.chatfusion.common.reader.MultiPartReader;
 import fr.upem.chatfusion.common.reader.Reader;
 
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
 
 public record FusionAckLeader(int serverId) implements Packet {
 

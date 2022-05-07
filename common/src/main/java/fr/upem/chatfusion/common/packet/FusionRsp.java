@@ -3,10 +3,6 @@ package fr.upem.chatfusion.common.packet;
 import fr.upem.chatfusion.common.reader.MultiPartReader;
 import fr.upem.chatfusion.common.reader.Reader;
 
-import java.io.UncheckedIOException;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;

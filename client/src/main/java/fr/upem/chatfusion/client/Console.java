@@ -1,7 +1,5 @@
 package fr.upem.chatfusion.client;
 
-import sun.misc.Unsafe;
-
 import java.util.Objects;
 import java.util.Scanner;
 import java.util.logging.Logger;

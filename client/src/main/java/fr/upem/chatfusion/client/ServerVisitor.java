@@ -1,15 +1,14 @@
 package fr.upem.chatfusion.client;
 
-import fr.upem.chatfusion.common.packet.*;
+import fr.upem.chatfusion.common.packet.AuthRsp;
+import fr.upem.chatfusion.common.packet.FileChunk;
+import fr.upem.chatfusion.common.packet.MsgPbl;
+import fr.upem.chatfusion.common.packet.MsgPrv;
+import fr.upem.chatfusion.common.packet.PacketVisitor;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Objects;
-import java.util.Set;
 
 public class ServerVisitor implements PacketVisitor {
 

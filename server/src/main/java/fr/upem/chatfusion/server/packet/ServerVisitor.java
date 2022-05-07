@@ -13,7 +13,6 @@ import fr.upem.chatfusion.common.packet.PacketVisitor;
 import fr.upem.chatfusion.server.PeerContext;
 import fr.upem.chatfusion.server.Server;
 
-import java.io.IOException;
 import java.util.Objects;
 
 public class ServerVisitor implements PacketVisitor {

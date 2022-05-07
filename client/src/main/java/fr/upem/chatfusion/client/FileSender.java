@@ -8,7 +8,6 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.channels.Selector;
 import java.nio.file.Path;
-import java.util.Random;
 
 public class FileSender {
 
