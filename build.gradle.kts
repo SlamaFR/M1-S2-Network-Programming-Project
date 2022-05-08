@@ -16,6 +16,7 @@ fun Project.jarConfig(mainClassFQName: String) {
         configurations["compileClasspath"].forEach {
             from(zipTree(it.absolutePath))
         }
+        destinationDirectory.set(rootProject.file("build"))
     }
 }
 
