@@ -42,8 +42,9 @@ public final class FileReceiver implements AutoCloseable {
             throw new IllegalStateException("FileReceiver has not been initialized yet");
         }
         outputStream.write(packet.chunk());
-        if (received++ == packet.chunkNumber()) {
-            System.out.printf("File %s received\n", path.getFileName());
+        if (++received == packet.chunkNumber()) {
+            System.out.printf("[%d] %s: File %s received\n", packet.srcServerId(),
+                    packet.srcNickname(), path.getFileName());
             close();
         }
     }
